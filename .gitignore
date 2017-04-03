@@ -3,3 +3,7 @@
 ################################################################################
 
 /src/.vs/MoveToStash/v14
+/src/MoveToStash/obj/Debug
+*.pdb
+/src/MoveToStash/Properties
+*.ini
