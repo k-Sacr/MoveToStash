@@ -77,7 +77,9 @@ namespace MoveToStash
             _tabCount = Settings.TabCount;
             var tabsValue = ReadTabSetting();
 
-            Indentity();
+            if (Settings.Indentity)
+                Indentity();
+
             FirstTab();
 
             if (!_run)

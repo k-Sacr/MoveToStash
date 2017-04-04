@@ -9,6 +9,7 @@ namespace MoveToStash
         {
             Enable = true;
             TabNum = true;
+            Indentity = true;
             IgnoreCell = new RangeNode<int>(3, 0, 5);
             TabCount = new RangeNode<int>(11, 4, 20);
 
@@ -36,6 +37,9 @@ namespace MoveToStash
             StoneHammer = new RangeNode<int>(8, 0, 20);
 
         }
+
+        [Menu("Identify items?")]
+        public ToggleNode Indentity { get; set; }
 
         [Menu("Tab Count:")]
         public RangeNode<int> TabCount { get; set; }
