@@ -8,10 +8,10 @@ namespace MoveToStash
         public MoveToStashSetting()
         {
             Enable = true;
+            TabNum = true;
             IgnoreCell = new RangeNode<int>(3, 0, 5);
             TabCount = new RangeNode<int>(11, 4, 20);
 
-            StashNum = true;
             DivinationCards = new RangeNode<int>(1, 0, 20);
             Currency = new RangeNode<int>(2, 0, 20);
             Gems = new RangeNode<int>(3, 0, 20);
@@ -40,13 +40,13 @@ namespace MoveToStash
         [Menu("Tab Count:")]
         public RangeNode<int> TabCount { get; set; }
 
-        [Menu("Ignored cell:")]
+        [Menu("Ignoring last cells:")]
         public RangeNode<int> IgnoreCell { get; set; }
 
         #region Setting
 
-        [Menu("Stash number:", 10)]
-        public ToggleNode StashNum { get; set; }
+        [Menu("Tab num(start at left):", 10)]
+        public ToggleNode TabNum { get; set; }
 
         [Menu("Currency", 11, 10)]
         public RangeNode<int> Currency { get; set; }
