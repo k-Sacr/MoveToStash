@@ -119,10 +119,8 @@ namespace MoveToStash
                         continue;
                     MouseClickCtrl(position);
                 }
-                //Thread.Sleep(Settings.Speed);
                 currentTab++;
                 NextTab(currentTab);
-                //Thread.Sleep(Settings.Speed * 5);
             }
             LogMessage("MoveToStash Stop!", 3);
         }
@@ -196,8 +194,14 @@ namespace MoveToStash
 
         private bool ClickItem(string type, int count = 1)
         {
-            var items = _stashZone.VisibleInventoryItems;
+            var itemInInv = _inventoryZone.Children.Select(element => element.AsObject<NormalInventoryItem>().Item);
+            count = count
+                    - (from item in itemInInv let modsComponent = item?.GetComponent<Mods>() where item != null && item.Path.Contains(type) select modsComponent)
+                    .TakeWhile(modsComponent => modsComponent.ItemRarity == ItemRarity.Rare && modsComponent.ItemLevel >= 65).Count();
+            if (count <= 0)
+                return true;
 
+            var items = _stashZone.VisibleInventoryItems;
             foreach (var child in items)
             {
                 if (!_run)
@@ -217,6 +221,8 @@ namespace MoveToStash
                         return true;
                 }
             }
+
+            LogMessage($">>> Not found item: {type} in current tab", 5);
 
             return false;
         }
@@ -304,6 +310,8 @@ namespace MoveToStash
             if (modsComponent.ItemRarity == ItemRarity.Unique)
                 return "";
             var st = item.Path.Split('/');
+            if (st.Length < 3)
+                return "";
             if (st[2] == "Armours")
                 return modsComponent.ItemRarity == ItemRarity.Rare ? st[3] : "";
             if (st[2] == "Weapons" && (st.Last() == "OneHandMace4" || st.Last() == "OneHandMace11" || st.Last() == "OneHandMace18"))
