@@ -8,22 +8,21 @@ namespace MoveToStash
         public MoveToStashSetting()
         {
             Enable = true;
-            TabNum = true;
             Indentity = true;
             IgnoreCell = new RangeNode<int>(3, 0, 5);
             TabCount = new RangeNode<int>(11, 4, 20);
+            Speed = new RangeNode<int>(100, 50, 200);
 
+            TabNum = true;
             DivinationCards = new RangeNode<int>(1, 0, 20);
             Currency = new RangeNode<int>(2, 0, 20);
             Gems = new RangeNode<int>(3, 0, 20);
             Essence = new RangeNode<int>(3, 0, 20);
-
             Leaguestones = new RangeNode<int>(4, 0, 20);
             Maps = new RangeNode<int>(4, 0, 20);
             MapFragments = new RangeNode<int>(4, 0, 20);
             Jewels = new RangeNode<int>(5, 0, 20);
             Flasks = new RangeNode<int>(5, 0, 20);
-
             Weapons = new RangeNode<int>(6, 0, 20);
             Shields = new RangeNode<int>(6, 0, 20);
             Quivers = new RangeNode<int>(6, 0, 20);
@@ -38,13 +37,16 @@ namespace MoveToStash
 
         }
 
-        [Menu("Identify items?")]
+		[Menu("Identify items?")]
         public ToggleNode Indentity { get; set; }
+
+        [Menu("Speed:")]
+        public RangeNode<int> Speed { get; set; }
 
         [Menu("Tab Count:")]
         public RangeNode<int> TabCount { get; set; }
 
-        [Menu("Ignoring last cells:")]
+		[Menu("Ignoring last cells:")]
         public RangeNode<int> IgnoreCell { get; set; }
 
         #region Setting

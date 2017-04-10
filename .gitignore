@@ -6,3 +6,5 @@
 /src/MoveToStash/obj/Debug
 *.pdb
 *.ini
+/ErrorLog.txt
+/src/MoveToStash/.vs/MoveToStash/v14/.suo

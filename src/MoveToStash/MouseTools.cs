@@ -61,6 +61,14 @@ namespace MoveToStash
             MouseEvent(MouseEventFlags.RightUp);
         }
 
+        public static void MouseRightDown()
+        {
+            MouseEvent(MouseEventFlags.RightUp);
+            Thread.Sleep(70);
+            MouseEvent(MouseEventFlags.RightDown);
+        }
+
+
         public static void MouseEvent(MouseEventFlags value)
         {
             var position = GetCursorPosition();

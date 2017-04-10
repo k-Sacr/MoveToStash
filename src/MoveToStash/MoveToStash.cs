@@ -17,12 +17,14 @@ namespace MoveToStash
 {
     public class MoveToStash : BaseSettingsPlugin<MoveToStashSetting>
     {
-        private bool _holdKey;
+        private Thread _moveThread;
         private IngameState _ingameState;
         private Element _inventoryZone;
-        private Thread _moveThread;
+        private Inventory _stashZone;
+
         private bool _run;
         private int _tabCount;
+        private bool _holdKey;
 
         public override void Initialise()
         {
@@ -41,20 +43,32 @@ namespace MoveToStash
 
                 if (!_holdKey && WinApi.IsKeyDown(Keys.F3))
                 {
+                    _holdKey = true;
                     if (_moveThread == null || !_moveThread.IsAlive)
                     {
                         _moveThread = new Thread(ScanInventory);
                         _moveThread.Start();
                     }
                     else if (_run && _moveThread != null && _moveThread.IsAlive)
-                    {
                         _run = false;
-                    }
                 }
                 else if (_holdKey && !WinApi.IsKeyDown(Keys.F3))
-                {
                     _holdKey = false;
+
+
+                if (!_holdKey && WinApi.IsKeyDown(Keys.F2))
+                {
+                    _holdKey = true;
+                    if (_moveThread == null || !_moveThread.IsAlive)
+                    {
+                        _moveThread = new Thread(ChaosRecipe);
+                        _moveThread.Start();
+                    }
+                    else if (_run && _moveThread != null && _moveThread.IsAlive)
+                        _run = false;
                 }
+                else if (_holdKey && !WinApi.IsKeyDown(Keys.F2))
+                    _holdKey = false;
             }
             catch (Exception e)
             {
@@ -66,20 +80,19 @@ namespace MoveToStash
 
         private void ScanInventory()
         {
-            if (!GameController.Game.IngameState.IngameUi.InventoryPanel.IsVisible)
+            if (!_ingameState.IngameUi.InventoryPanel.IsVisible)
             {
                 _run = false;
                 return;
             }
             LogMessage("MoveToStash start!", 3);
-            Thread.Sleep(500);
+            Thread.Sleep(Settings.Speed * 3);
             _run = true;
             _tabCount = Settings.TabCount;
             var tabsValue = ReadTabSetting();
 
             if (Settings.Indentity)
                 Indentity();
-
             FirstTab();
 
             if (!_run)
@@ -94,7 +107,7 @@ namespace MoveToStash
                     if (!_run)
                         return;
 
-                    var item = child.AsObject<InventoryItemIcon>().Item;
+                    var item = child.AsObject<NormalInventoryItem>().Item;
                     var position = child.GetClientRect().Center;
 
                     if (string.IsNullOrEmpty(item?.Path))
@@ -106,20 +119,114 @@ namespace MoveToStash
                         continue;
                     MouseClickCtrl(position);
                 }
-                Thread.Sleep(100);
-                NextTab();
+                //Thread.Sleep(Settings.Speed);
                 currentTab++;
-                Thread.Sleep(500);
+                NextTab(currentTab);
+                //Thread.Sleep(Settings.Speed * 5);
             }
             LogMessage("MoveToStash Stop!", 3);
+        }
+
+        private void ChaosRecipe()
+        {
+            if (!GameController.Game.IngameState.IngameUi.InventoryPanel.IsVisible)
+            {
+                _run = false;
+                return;
+            }
+            LogMessage("Chaos Recipe start!", 3);
+            Thread.Sleep(Settings.Speed * 3);
+            _run = true;
+            _tabCount = Settings.TabCount;
+            var tabsValue = ReadTabSetting();
+
+            FirstTab();
+
+            if (!_run)
+                return;
+
+            var currentTab = 1;
+            while (currentTab <= _tabCount)
+            {
+                if (tabsValue.ContainsKey(currentTab))
+                    foreach (string type in tabsValue[currentTab])
+                    {
+                        switch (type)
+                        {
+                            case "BodyArmours":
+                                if (!ClickItem(type))
+                                    return;
+                                break;
+                            case "Helmets":
+                                if (!ClickItem(type))
+                                    return;
+                                break;
+                            case "Boots":
+                                if (!ClickItem(type))
+                                    return;
+                                break;
+                            case "Gloves":
+                                if (!ClickItem(type))
+                                    return;
+                                break;
+                            case "Belts":
+                                if (!ClickItem(type))
+                                    return;
+                                break;
+                            case "Amulets":
+                                if (!ClickItem(type))
+                                    return;
+                                break;
+                            case "Weapons":
+                                if (!ClickItem(type, 2))
+                                    return;
+                                break;
+                            case "Rings":
+                                if (!ClickItem(type, 2))
+                                    return;
+                                break;
+                        }
+                    }
+
+                currentTab++;
+                NextTab(currentTab);
+            }
+            LogMessage("MoveToStash Stop!", 3);
+        }
+
+        private bool ClickItem(string type, int count = 1)
+        {
+            var items = _stashZone.VisibleInventoryItems;
+
+            foreach (var child in items)
+            {
+                if (!_run)
+                    return false;
+
+                var item = child.AsObject<NormalInventoryItem>().Item;
+                var position = child.GetClientRect().Center;
+                var modsComponent = item?.GetComponent<Mods>();
+
+                if (string.IsNullOrEmpty(item?.Path) || item.Path.Contains("Talisman"))
+                    continue;
+                var itemClass = CheckItem(item);
+                if (type == itemClass && modsComponent.ItemRarity == ItemRarity.Rare && modsComponent.ItemLevel >= 65)
+                {
+                    MouseClickCtrl(position);
+                    if (--count <= 0)
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         private bool ChechIngoredCell(SharpDX.Vector2 position)
         {
             var invPoint = _inventoryZone.GetClientRect();
             var invBottomRight = invPoint.BottomRight;
-            var wCell = invPoint.Width / 12;
-            var hCell = invPoint.Height / 5;
+            float wCell = invPoint.Width / 12;
+            float hCell = invPoint.Height / 5;
             if (position.X > invBottomRight.X - wCell)
                 if (position.Y > invBottomRight.Y - hCell * Settings.IgnoreCell.Value)
                     return false;
@@ -145,19 +252,20 @@ namespace MoveToStash
                     return;
                 }
 
-                var item = child.AsObject<InventoryItemIcon>().Item;
+                var item = child.AsObject<NormalInventoryItem>().Item;
                 var st = item?.Path.Split('/');
                 var modsComponent = item?.GetComponent<Mods>();
-                if (modsComponent != null && (modsComponent.ItemRarity != ItemRarity.Rare || modsComponent.Identified || st[2] == "Maps"))
+                if (modsComponent == null || modsComponent.ItemRarity != ItemRarity.Rare || modsComponent.Identified || string.IsNullOrEmpty(item.Path)
+                    || st[2] == "Maps")
                     continue;
 
                 var position = child.GetClientRect().Center;
                 MouseTools.MoveCursor(MouseTools.GetMousePosition(), new Vector2(position.X, position.Y), 10);
-                Thread.Sleep(100);
+                Thread.Sleep(Settings.Speed);
                 MouseTools.MouseLeftClickEvent();
-                Thread.Sleep(60);
+                Thread.Sleep(Settings.Speed);
             }
-            Thread.Sleep(100);
+            Thread.Sleep(Settings.Speed);
             KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyEventShiftVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyUp);
         }
 
@@ -211,41 +319,55 @@ namespace MoveToStash
         {
             if (child == null)
                 return false;
-            var item = child.AsObject<InventoryItemIcon>().Item;
+            var item = child.AsObject<NormalInventoryItem>().Item;
             var bit = GameController.Files.BaseItemTypes.Translate(item?.Path);
-            return bit.BaseName == baseName;
+            return bit != null && bit.BaseName == baseName;
         }
 
         private void MouseClickCtrl(SharpDX.Vector2 position)
         {
             MouseTools.MoveCursor(MouseTools.GetMousePosition(), new Vector2(position.X, position.Y), 20);
-            Thread.Sleep(100);
+            Thread.Sleep(Settings.Speed);
             KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyLControlVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyDown);
-            Thread.Sleep(60);
+            Thread.Sleep(Settings.Speed);
             MouseTools.MouseLeftClickEvent();
-            Thread.Sleep(60);
+            Thread.Sleep(Settings.Speed);
             KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyLControlVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyUp);
         }
 
-        private void NextTab()
+        private void NextTab(int stashNum)
         {
             KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyRightVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyDown);
-            Thread.Sleep(60);
+            Thread.Sleep(Settings.Speed);
             KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyRightVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyUp);
+
+            Inventory inv;
+            do
+            {
+                Thread.Sleep(Settings.Speed);
+                inv = _ingameState.ServerData.StashPanel.getStashInventory(stashNum - 1);
+            }
+            while (inv == null);
+            _stashZone = inv;
         }
 
         private void FirstTab()
         {
-            ReadTabSetting();
             int tabCount = Settings.TabCount;
             do
             {
                 KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyLeftVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyDown);
-                Thread.Sleep(60);
+                Thread.Sleep(Settings.Speed);
                 KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyLeftVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyUp);
-                Thread.Sleep(60);
+                Thread.Sleep(Settings.Speed);
 
                 tabCount--;
+
+                if (!_run)
+                    return;
+
+                if (_ingameState.ServerData.StashPanel.getStashInventory(0).AsObject<Element>().IsVisible)
+                    return;
             }
             while (tabCount > 0);
         }
@@ -253,9 +375,9 @@ namespace MoveToStash
         private void UseScrollWisdom(RectangleF orbPosition)
         {
             MouseTools.MoveCursor(MouseTools.GetMousePosition(), new Vector2(orbPosition.Center.X, orbPosition.Center.Y), 10);
-            Thread.Sleep(100);
+            Thread.Sleep(Settings.Speed);
             MouseTools.MouseRightClickEvent();
-            Thread.Sleep(60);
+            Thread.Sleep(Settings.Speed);
             KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyEventShiftVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyDown);
         }
 
