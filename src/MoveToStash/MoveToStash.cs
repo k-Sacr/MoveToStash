@@ -195,9 +195,23 @@ namespace MoveToStash
         private bool ClickItem(string type, int count = 1)
         {
             var itemInInv = _inventoryZone.Children.Select(element => element.AsObject<NormalInventoryItem>().Item);
-            count = count
-                    - (from item in itemInInv let modsComponent = item?.GetComponent<Mods>() where item != null && item.Path.Contains(type) select modsComponent)
-                    .TakeWhile(modsComponent => modsComponent.ItemRarity == ItemRarity.Rare && modsComponent.ItemLevel >= 65).Count();
+
+            count -= itemInInv.Where(t => t != null && t.Path.Contains(type)).Select(entity => entity.GetComponent<Mods>()).Count(mods => mods.ItemRarity == ItemRarity.Rare && mods.ItemLevel >= 65);
+                    
+                    
+//                    .Select(item => new { item, modsComponent = item?.GetComponent<Mods>() })
+//                        
+//                        .Select(t => t.modsComponent)
+//                    .TakeWhile(modsComponent => modsComponent.ItemRarity == ItemRarity.Rare && modsComponent.ItemLevel >= 65).Count();
+
+//            foreach (var it in itemInInv.Where(x => x != null && x.Path.Contains(type)))
+//            {
+//                    Mods m = it.GetComponent<Mods>();
+//                    if (m.ItemRarity == ItemRarity.Rare && m.ItemLevel >= 65)
+//                        count--;
+//            }
+
+
             if (count <= 0)
                 return true;
 
