@@ -170,7 +170,7 @@ namespace MoveToStash
             count -=
                 itemInInv.Where(t => t != null && t.Path.Contains(type))
                     .Select(entity => entity.GetComponent<Mods>())
-                    .Count(mods => mods.ItemRarity == ItemRarity.Rare && mods.ItemLevel >= 65);
+                    .Count(mods => mods.ItemRarity == ItemRarity.Rare && mods.ItemLevel >= 60);
 
             if (count <= 0)
                 return true;
@@ -188,7 +188,7 @@ namespace MoveToStash
                 if (string.IsNullOrEmpty(item?.Path) || item.Path.Contains("Talisman"))
                     continue;
                 var itemClass = CheckItem(item);
-                if (type == itemClass && modsComponent.ItemRarity == ItemRarity.Rare && modsComponent.ItemLevel >= 65)
+                if (type == itemClass && modsComponent.ItemRarity == ItemRarity.Rare && modsComponent.ItemLevel >= 60)
                 {
                     MouseClickCtrl(position);
                     if (--count <= 0)
