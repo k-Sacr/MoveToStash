@@ -122,7 +122,10 @@ namespace MoveToStash
                         continue;
                     MouseClickCtrl(position);
                 }
-                NextTab(++currentTab);
+                currentTab++;
+                if (currentTab > _ingameState.ServerData.StashPanel.TotalStashes)
+                    return;
+                NextTab(currentTab);
             }
             LogMessage("MoveToStash Stop!", 3);
         }
@@ -161,7 +164,10 @@ namespace MoveToStash
                                 break;
                         }
                     }
-                NextTab(++currentTab);
+                currentTab++;
+                if (currentTab > _ingameState.ServerData.StashPanel.TotalStashes)
+                    return;
+                NextTab(currentTab);
             }
             LogMessage("MoveToStash Stop!", 3);
         }
@@ -332,12 +338,14 @@ namespace MoveToStash
             KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyRightVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyUp);
 
             Inventory inv;
+            int delay = Settings.Speed;
             do
             {
-                Thread.Sleep(Settings.Speed);
+                Thread.Sleep(delay);
+                delay -= delay / 5;
                 inv = _ingameState.ServerData.StashPanel.getStashInventory(stashNum - 1);
             }
-            while (inv == null && _run);
+            while (inv == null && _run && delay > 0);
             _stashZone = inv;
         }
 
