@@ -110,6 +110,8 @@ namespace MoveToStash
 
                     var item = child.AsObject<NormalInventoryItem>().Item;
                     var position = child.GetClientRect().Center;
+                    position.X += GameController.Window.GetWindowRectangle().X;
+                    position.Y += GameController.Window.GetWindowRectangle().Y;
 
                     if (string.IsNullOrEmpty(item?.Path))
                         continue;
@@ -183,6 +185,8 @@ namespace MoveToStash
 
                 var item = child.AsObject<NormalInventoryItem>().Item;
                 var position = child.GetClientRect().Center;
+                position.X += GameController.Window.GetWindowRectangle().X;
+                position.Y += GameController.Window.GetWindowRectangle().Y;
                 var modsComponent = item?.GetComponent<Mods>();
 
                 if (string.IsNullOrEmpty(item?.Path) || item.Path.Contains("Talisman"))
@@ -220,7 +224,10 @@ namespace MoveToStash
             var scroll = _inventoryZone.Children.FirstOrDefault(element => CheckNameItem(element, "Scroll of Wisdom"));
             if (scroll == null)
                 return;
-            UseScrollWisdom(scroll.GetClientRect());
+            var scrollPos = scroll.GetClientRect().Center;
+            scrollPos.X += GameController.Window.GetWindowRectangle().X;
+            scrollPos.Y += GameController.Window.GetWindowRectangle().Y;
+            UseScrollWisdom(scrollPos);
 
             var items = _inventoryZone.Children;
             foreach (var child in items)
@@ -239,6 +246,8 @@ namespace MoveToStash
                     continue;
 
                 var position = child.GetClientRect().Center;
+                position.X += GameController.Window.GetWindowRectangle().X;
+                position.Y += GameController.Window.GetWindowRectangle().Y;
                 MouseTools.MoveCursor(MouseTools.GetMousePosition(), new Vector2(position.X, position.Y), 10);
                 Thread.Sleep(Settings.Speed);
                 MouseTools.MouseLeftClickEvent();
@@ -347,9 +356,9 @@ namespace MoveToStash
             while (_run);
         }
 
-        private void UseScrollWisdom(RectangleF orbPosition)
+        private void UseScrollWisdom(SharpDX.Vector2 scrollPos)
         {
-            MouseTools.MoveCursor(MouseTools.GetMousePosition(), new Vector2(orbPosition.Center.X, orbPosition.Center.Y), 10);
+            MouseTools.MoveCursor(MouseTools.GetMousePosition(), new Vector2(scrollPos.X, scrollPos.Y), 10);
             Thread.Sleep(Settings.Speed);
             MouseTools.MouseRightClickEvent();
             Thread.Sleep(Settings.Speed);
