@@ -8,3 +8,7 @@
 *.ini
 /ErrorLog.txt
 /src/MoveToStash/.vs/MoveToStash/v14/.suo
+/IgnoreCellSetting.json
+/src/packages/Newtonsoft.Json.10.0.2
+/Newtonsoft.Json.xml
+/Newtonsoft.Json.dll

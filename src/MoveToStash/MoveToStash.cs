@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
+using Newtonsoft.Json;
 using PoeHUD.Framework;
 using PoeHUD.Models.Enums;
 using PoeHUD.Plugins;
@@ -28,8 +29,19 @@ namespace MoveToStash
         private readonly string[] _oneClick = { "BodyArmours", "Helmets", "Boots", "Gloves", "Belts", "Amulets" };
         private readonly string[] _twoClick = { "Weapons", "Rings" };
 
+        private int[,] _invArr = new int[5,12];
+
         public override void Initialise()
         {
+            var fileName = PluginDirectory + @"/IgnoreCellSetting.json";
+            if (!File.Exists(fileName))
+            {
+                var arr = JsonConvert.SerializeObject(_invArr).Replace("],[", $"],{Environment.NewLine} [");
+                File.WriteAllText(fileName,arr);
+            }
+
+            string json = File.ReadAllText(fileName);
+            _invArr = JsonConvert.DeserializeObject<int[,]>(json);
         }
 
         public override void Render()
@@ -109,7 +121,7 @@ namespace MoveToStash
                         return;
 
                     var item = child.AsObject<NormalInventoryItem>().Item;
-                    var position = child.GetClientRect().Center;
+                    var position = child.GetClientRect();
                     position.X += GameController.Window.GetWindowRectangle().X;
                     position.Y += GameController.Window.GetWindowRectangle().Y;
 
@@ -118,9 +130,9 @@ namespace MoveToStash
                     var itemClass = CheckItem(item);
                     if (!tabsValue.ContainsKey(currentTab) || !tabsValue[currentTab].Contains(itemClass))
                         continue;
-                    if (!ChechIngoredCell(position))
+                    if (!CheckIngoredCell(position))
                         continue;
-                    MouseClickCtrl(position);
+                    MouseClickCtrl(position.Center);
                 }
                 currentTab++;
                 if (currentTab > _ingameState.ServerData.StashPanel.TotalStashes)
@@ -210,16 +222,14 @@ namespace MoveToStash
             return false;
         }
 
-        private bool ChechIngoredCell(SharpDX.Vector2 position)
+        private bool CheckIngoredCell(RectangleF position)
         {
             var invPoint = _inventoryZone.GetClientRect();
-            var invBottomRight = invPoint.BottomRight;
             float wCell = invPoint.Width / 12;
             float hCell = invPoint.Height / 5;
-            if (position.X > invBottomRight.X - wCell)
-                if (position.Y > invBottomRight.Y - hCell * Settings.IgnoreCell.Value)
-                    return false;
-            return true;
+            int x = (int) ((1f + position.X - invPoint.X) / wCell);
+            int y = (int) ((1f + position.Y - invPoint.Y) / hCell);
+            return _invArr[y, x] == 0;
         }
 
         private void Indentity()

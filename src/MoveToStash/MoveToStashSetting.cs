@@ -9,7 +9,6 @@ namespace MoveToStash
         {
             Enable = true;
             Indentity = true;
-            IgnoreCell = new RangeNode<int>(3, 0, 5);
             TabCount = new RangeNode<int>(11, 4, 20);
             Speed = new RangeNode<int>(100, 50, 200);
 
@@ -36,18 +35,6 @@ namespace MoveToStash
             StoneHammer = new RangeNode<int>(8, 0, 20);
 
         }
-
-		[Menu("Identify items?")]
-        public ToggleNode Indentity { get; set; }
-
-        [Menu("Speed:")]
-        public RangeNode<int> Speed { get; set; }
-
-        [Menu("Tab Count:")]
-        public RangeNode<int> TabCount { get; set; }
-
-		[Menu("Ignoring last cells:")]
-        public RangeNode<int> IgnoreCell { get; set; }
 
         #region Setting
 
@@ -114,8 +101,19 @@ namespace MoveToStash
         [Menu("Stone Hammer", 30, 10)]
         public RangeNode<int> StoneHammer { get; set; }
 
-
-
         #endregion
+
+        [Menu("Identify items?")]
+        public ToggleNode Indentity { get; set; }
+
+        [Menu("Speed:")]
+        public RangeNode<int> Speed { get; set; }
+
+        [Menu("Tab Count:")]
+        public RangeNode<int> TabCount { get; set; }
+
+
+
+        
     }
 }
