@@ -122,8 +122,7 @@ namespace MoveToStash
 
                     var item = child.AsObject<NormalInventoryItem>().Item;
                     var position = child.GetClientRect();
-                    position.X += GameController.Window.GetWindowRectangle().X;
-                    position.Y += GameController.Window.GetWindowRectangle().Y;
+                    
 
                     if (string.IsNullOrEmpty(item?.Path))
                         continue;
@@ -132,6 +131,8 @@ namespace MoveToStash
                         continue;
                     if (!CheckIngoredCell(position))
                         continue;
+                    position.X += GameController.Window.GetWindowRectangle().X;
+                    position.Y += GameController.Window.GetWindowRectangle().Y;
                     MouseClickCtrl(position.Center);
                 }
                 currentTab++;
