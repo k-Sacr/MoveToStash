@@ -354,7 +354,7 @@ namespace MoveToStash
             {
                 Thread.Sleep(delay);
                 delay -= delay / 5;
-                inv = _ingameState.ServerData.StashPanel.getStashInventory(stashNum - 1);
+                inv = _ingameState.ServerData.StashPanel.GetStashInventoryByIndex(stashNum - 1);
             }
             while (inv == null && _run && delay > 0);
             _stashZone = inv;
@@ -369,7 +369,7 @@ namespace MoveToStash
                 KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyLeftVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyUp);
                 Thread.Sleep(Settings.Speed);
 
-                if (_ingameState.ServerData.StashPanel.getStashInventory(0).AsObject<Element>().IsVisible)
+                if (_ingameState.ServerData.StashPanel.GetStashInventoryByIndex(0).AsObject<Element>().IsVisible)
                     return;
             }
             while (_run);
