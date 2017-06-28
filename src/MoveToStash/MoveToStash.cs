@@ -55,7 +55,7 @@ namespace MoveToStash
 
                 _inventoryZone = _ingameState.ReadObject<Element>(_ingameState.IngameUi.InventoryPanel.Address + Element.OffsetBuffers + 0x42C);
 
-                if (!_holdKey && WinApi.IsKeyDown(Keys.F3))
+                if (!_holdKey && WinApi.IsKeyDown(Keys.F2))
                 {
                     _holdKey = true;
                     if (_moveThread == null || !_moveThread.IsAlive)
@@ -66,11 +66,11 @@ namespace MoveToStash
                     else if (_run && _moveThread != null && _moveThread.IsAlive)
                         _run = false;
                 }
-                else if (_holdKey && !WinApi.IsKeyDown(Keys.F3))
+                else if (_holdKey && !WinApi.IsKeyDown(Keys.F2))
                     _holdKey = false;
 
 
-                if (!_holdKey && WinApi.IsKeyDown(Keys.F2))
+                if (!_holdKey && WinApi.IsKeyDown(Keys.F3))
                 {
                     _holdKey = true;
                     if (_moveThread == null || !_moveThread.IsAlive)
@@ -81,7 +81,7 @@ namespace MoveToStash
                     else if (_run && _moveThread != null && _moveThread.IsAlive)
                         _run = false;
                 }
-                else if (_holdKey && !WinApi.IsKeyDown(Keys.F2))
+                else if (_holdKey && !WinApi.IsKeyDown(Keys.F3))
                     _holdKey = false;
             }
             catch (Exception e)

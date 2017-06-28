@@ -36,11 +36,12 @@ namespace MoveToStash
 
         }
 
-        #region Setting
+        
 
         [Menu("Tab num(start at left):", 10)]
         public ToggleNode TabNum { get; set; }
 
+        #region Setting
         [Menu("Currency", 11, 10)]
         public RangeNode<int> Currency { get; set; }
 
@@ -112,8 +113,10 @@ namespace MoveToStash
         [Menu("Tab Count:")]
         public RangeNode<int> TabCount { get; set; }
 
+        [Menu("Press F2 - move to stash")]
+        public EmptyNode UseF2 { get; set; }
 
-
-        
+        [Menu("Press F3 - Chaos recipe")]
+        public EmptyNode UseF3 { get; set; }
     }
 }

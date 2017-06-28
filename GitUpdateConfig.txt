@@ -1,0 +1,8 @@
+Owner: kSacred
+Name: MoveToStash
+Repository
+
+Ignore:
+src
+.gitignore
+README.md
