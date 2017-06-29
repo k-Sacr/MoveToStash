@@ -187,7 +187,9 @@ namespace MoveToStash
 
         private bool ClickItem(string type, int count = 1)
         {
-            var itemInInv = _inventoryZone.Children.Select(element => element.AsObject<NormalInventoryItem>().Item);
+            try
+            {
+                var itemInInv = _inventoryZone.Children.Select(element => element.AsObject<NormalInventoryItem>().Item);
             count -=
                 itemInInv.Where(t => t != null && t.Path.Contains(type))
                     .Select(entity => entity.GetComponent<Mods>())
@@ -218,7 +220,13 @@ namespace MoveToStash
                         return true;
                 }
             }
-
+            }
+            catch (Exception e)
+            {
+                Log(e.Message);
+                Log(e.Source);
+                throw;
+            }
             LogMessage($">>> Not found item: {type} in current tab", 5);
             return false;
         }
