@@ -336,8 +336,10 @@ namespace MoveToStash
             if (child == null)
                 return false;
             var item = child.AsObject<NormalInventoryItem>().Item;
+            if (item == null)
+                return false;
             var bit = GameController.Files.BaseItemTypes.Translate(item?.Path);
-            return bit != null && bit.BaseName == baseName;
+            return bit != null && (bit.BaseName == baseName || item.Path.Contains("CurrencyIdentification"));
         }
 
         private void MouseClickCtrl(SharpDX.Vector2 position)

@@ -10,7 +10,7 @@ namespace MoveToStash
             Enable = true;
             Indentity = true;
             TabCount = new RangeNode<int>(11, 4, 20);
-            Speed = new RangeNode<int>(100, 50, 200);
+            Speed = new RangeNode<int>(100, 30, 200);
 
             TabNum = true;
             DivinationCards = new RangeNode<int>(1, 0, 20);
