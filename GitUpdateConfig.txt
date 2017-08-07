@@ -1,4 +1,4 @@
-Owner: kSacred
+Owner: k-Sacr
 Name: MoveToStash
 Repository
 
