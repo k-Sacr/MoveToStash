@@ -20,7 +20,7 @@ namespace MoveToStash
     {
         private Thread _moveThread;
         private IngameState _ingameState;
-        private Element _inventoryZone;
+        private Inventory _inventoryZone;
         private Inventory _stashZone;
 
         private bool _run;
@@ -29,7 +29,7 @@ namespace MoveToStash
         private readonly string[] _oneClick = { "BodyArmours", "Helmets", "Boots", "Gloves", "Belts", "Amulets" };
         private readonly string[] _twoClick = { "Weapons", "Rings" };
 
-        private int[,] _invArr = new int[5,12];
+        private int[,] _invArr = new int[5, 12];
 
         public override void Initialise()
         {
@@ -37,7 +37,7 @@ namespace MoveToStash
             if (!File.Exists(fileName))
             {
                 var arr = JsonConvert.SerializeObject(_invArr).Replace("],[", $"],{Environment.NewLine} [");
-                File.WriteAllText(fileName,arr);
+                File.WriteAllText(fileName, arr);
             }
 
             string json = File.ReadAllText(fileName);
@@ -53,7 +53,7 @@ namespace MoveToStash
                 if (!_ingameState.IngameUi.InventoryPanel.IsVisible && !_ingameState.IngameUi.OpenLeftPanel.IsVisible)
                     return;
 
-                _inventoryZone = _ingameState.ReadObject<Element>(_ingameState.IngameUi.InventoryPanel.Address + Element.OffsetBuffers + 0x42C);
+                _inventoryZone = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory];
 
                 if (!_holdKey && WinApi.IsKeyDown(Keys.F2))
                 {
@@ -114,7 +114,7 @@ namespace MoveToStash
             int currentTab = 1;
             while (currentTab <= Settings.TabCount && _run)
             {
-                var items = _inventoryZone.Children;
+                var items = _inventoryZone.VisibleInventoryItems;
                 foreach (var child in items)
                 {
                     if (!_run)
@@ -122,7 +122,7 @@ namespace MoveToStash
 
                     var item = child.AsObject<NormalInventoryItem>().Item;
                     var position = child.GetClientRect();
-                    
+
 
                     if (string.IsNullOrEmpty(item?.Path))
                         continue;
@@ -189,37 +189,38 @@ namespace MoveToStash
         {
             try
             {
-                var itemInInv = _inventoryZone.Children.Select(element => element.AsObject<NormalInventoryItem>().Item);
-            count -=
-                itemInInv.Where(t => t != null && t.Path.Contains(type))
-                    .Select(entity => entity.GetComponent<Mods>())
-                    .Count(mods => mods.ItemRarity == ItemRarity.Rare && mods.ItemLevel >= 60);
+                var itemInInv = _inventoryZone.VisibleInventoryItems.Select(element => element.AsObject<NormalInventoryItem>().Item);
+                count -=
+                    itemInInv.Where(t => t != null && t.Path.Contains(type))
+                        .Select(entity => entity.GetComponent<Mods>())
+                        .Count(mods => mods.ItemRarity == ItemRarity.Rare && mods.ItemLevel >= 60);
 
-            if (count <= 0)
-                return true;
+                if (count <= 0)
+                    return true;
 
-            var items = _stashZone.VisibleInventoryItems.DefaultIfEmpty();
-            foreach (var child in items)
-            {
-                if (!_run)
-                    return false;
+                var items = _stashZone.VisibleInventoryItems;
+                if (items != null && items.Count > 0)
+                    foreach (var child in items)
+                    {
+                        if (!_run)
+                            return false;
 
-                var item = child.AsObject<NormalInventoryItem>().Item;
-                var position = child.GetClientRect().Center;
-                position.X += GameController.Window.GetWindowRectangle().X;
-                position.Y += GameController.Window.GetWindowRectangle().Y;
-                var modsComponent = item?.GetComponent<Mods>();
+                        var item = child.AsObject<NormalInventoryItem>().Item;
+                        var position = child.GetClientRect().Center;
+                        position.X += GameController.Window.GetWindowRectangle().X;
+                        position.Y += GameController.Window.GetWindowRectangle().Y;
+                        var modsComponent = item?.GetComponent<Mods>();
 
-                if (string.IsNullOrEmpty(item?.Path) || item.Path.Contains("Talisman"))
-                    continue;
-                var itemClass = CheckItem(item);
-                if (type == itemClass && modsComponent.ItemRarity == ItemRarity.Rare && modsComponent.ItemLevel >= 60)
-                {
-                    MouseClickCtrl(position);
-                    if (--count <= 0)
-                        return true;
-                }
-            }
+                        if (string.IsNullOrEmpty(item?.Path) || item.Path.Contains("Talisman"))
+                            continue;
+                        var itemClass = CheckItem(item);
+                        if (type == itemClass && modsComponent.ItemRarity == ItemRarity.Rare && modsComponent.ItemLevel >= 60)
+                        {
+                            MouseClickCtrl(position);
+                            if (--count <= 0)
+                                return true;
+                        }
+                    }
             }
             catch (Exception e)
             {
@@ -233,7 +234,7 @@ namespace MoveToStash
 
         private bool CheckIngoredCell(RectangleF position)
         {
-            var invPoint = _inventoryZone.GetClientRect();
+            var invPoint = _inventoryZone.InventoryUiElement.GetClientRect();
             float wCell = invPoint.Width / 12;
             float hCell = invPoint.Height / 5;
             int x = (int) ((1f + position.X - invPoint.X) / wCell);
@@ -246,7 +247,7 @@ namespace MoveToStash
             if (!_run)
                 return;
 
-            var scroll = _inventoryZone.Children.FirstOrDefault(element => CheckNameItem(element, "Scroll of Wisdom"));
+            var scroll = _inventoryZone.VisibleInventoryItems.FirstOrDefault(element => CheckNameItem(element, "Scroll of Wisdom"));
             if (scroll == null)
                 return;
             var scrollPos = scroll.GetClientRect().Center;
@@ -254,7 +255,7 @@ namespace MoveToStash
             scrollPos.Y += GameController.Window.GetWindowRectangle().Y;
             UseScrollWisdom(scrollPos);
 
-            var items = _inventoryZone.Children;
+            var items = _inventoryZone.VisibleInventoryItems;
             foreach (var child in items)
             {
                 if (!_run)

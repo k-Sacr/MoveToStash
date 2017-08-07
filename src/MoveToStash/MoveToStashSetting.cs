@@ -26,13 +26,13 @@ namespace MoveToStash
             Shields = new RangeNode<int>(6, 0, 20);
             Quivers = new RangeNode<int>(6, 0, 20);
             BodyArmours = new RangeNode<int>(7, 0, 20);
-            Helmets = new RangeNode<int>(7, 0, 20);
-            Boots = new RangeNode<int>(7, 0, 20);
-            Gloves = new RangeNode<int>(7, 0, 20);
-            Belts = new RangeNode<int>(8, 0, 20);
-            Rings = new RangeNode<int>(8, 0, 20);
-            Amulets = new RangeNode<int>(8, 0, 20);
-            StoneHammer = new RangeNode<int>(8, 0, 20);
+            Helmets = new RangeNode<int>(8, 0, 20);
+            Boots = new RangeNode<int>(8, 0, 20);
+            Gloves = new RangeNode<int>(8, 0, 20);
+            Belts = new RangeNode<int>(9, 0, 20);
+            Rings = new RangeNode<int>(9, 0, 20);
+            Amulets = new RangeNode<int>(9, 0, 20);
+            StoneHammer = new RangeNode<int>(10, 0, 20);
 
         }
 
@@ -42,10 +42,10 @@ namespace MoveToStash
         public ToggleNode TabNum { get; set; }
 
         #region Setting
-        [Menu("Currency", 11, 10)]
+        [Menu("Currency", 12, 10)]
         public RangeNode<int> Currency { get; set; }
 
-        [Menu("Divination Cards", 12, 10)]
+        [Menu("Divination Cards", 11, 10)]
         public RangeNode<int> DivinationCards { get; set; }
 
         [Menu("Gems", 13, 10)]
