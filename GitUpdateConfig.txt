@@ -6,3 +6,5 @@ Ignore:
 src
 .gitignore
 README.md
+IgnoreCellSetting.json
+config.ini
