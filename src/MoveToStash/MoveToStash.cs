@@ -60,15 +60,22 @@ namespace MoveToStash
                     _holdKey = true;
                     if (_moveThread == null || !_moveThread.IsAlive)
                     {
-                        _moveThread = new Thread(ScanInventory);
+                        _moveThread = _ingameState.IngameUi.OpenLeftPanel.IsVisible 
+                            ? new Thread(ScanInventory) 
+                            : new Thread(SellItems);
                         _moveThread.Start();
+                        Thread.Sleep(200);
                     }
                     else if (_run && _moveThread != null && _moveThread.IsAlive)
+                    {
                         _run = false;
+                        LogMessage("Stop!", 3);
+
+                        Thread.Sleep(200);
+                    }
                 }
                 else if (_holdKey && !WinApi.IsKeyDown(Keys.F2))
                     _holdKey = false;
-
 
                 if (!_holdKey && WinApi.IsKeyDown(Keys.F3))
                 {
@@ -77,9 +84,14 @@ namespace MoveToStash
                     {
                         _moveThread = new Thread(ChaosRecipe);
                         _moveThread.Start();
+                        Thread.Sleep(200);
                     }
                     else if (_run && _moveThread != null && _moveThread.IsAlive)
+                    {
                         _run = false;
+                        LogMessage("Stop!", 3);
+                        Thread.Sleep(200);
+                    }
                 }
                 else if (_holdKey && !WinApi.IsKeyDown(Keys.F3))
                     _holdKey = false;
@@ -115,6 +127,8 @@ namespace MoveToStash
             while (currentTab <= Settings.TabCount && _run)
             {
                 var items = _inventoryZone.VisibleInventoryItems;
+                if (items.All(i => !CheckIngoredCell(i.GetClientRect())))
+                    return;
                 foreach (var child in items)
                 {
                     if (!_run)
@@ -141,6 +155,42 @@ namespace MoveToStash
                 NextTab(currentTab);
             }
             LogMessage("MoveToStash Stop!", 3);
+        }
+
+        private void SellItems()
+        {
+            if (!_ingameState.IngameUi.InventoryPanel.IsVisible)
+            {
+                _run = false;
+                return;
+            }
+            LogMessage("Sell Items start!", 3);
+            _run = true;
+            Thread.Sleep(Settings.Speed * 3);
+            if (!_run)
+                return;
+
+            var items = _inventoryZone.VisibleInventoryItems;
+            if (items.All(i => !CheckIngoredCell(i.GetClientRect())))
+                return;
+            foreach (var child in items)
+            {
+                if (!_run)
+                    return;
+
+                var item = child.AsObject<NormalInventoryItem>().Item;
+                var position = child.GetClientRect();
+
+                if (string.IsNullOrEmpty(item?.Path))
+                    continue;
+                if (!CheckIngoredCell(position))
+                    continue;
+
+                position.X += GameController.Window.GetWindowRectangle().X;
+                position.Y += GameController.Window.GetWindowRectangle().Y;
+                MouseClickCtrl(position.Center);
+            }
+            LogMessage("Sell Items Stop!", 3);
         }
 
         private void ChaosRecipe()
@@ -219,6 +269,8 @@ namespace MoveToStash
                             MouseClickCtrl(position);
                             if (--count <= 0)
                                 return true;
+                            if (item.Path.Contains("TwoHandWeapons"))
+                                return true;
                         }
                     }
             }
@@ -274,7 +326,7 @@ namespace MoveToStash
                 var position = child.GetClientRect().Center;
                 position.X += GameController.Window.GetWindowRectangle().X;
                 position.Y += GameController.Window.GetWindowRectangle().Y;
-                MouseTools.MoveCursor(MouseTools.GetMousePosition(), new Vector2(position.X, position.Y), 10);
+                MouseTools.MoveCursor(MouseTools.GetMousePosition(), new Vector2(position.X, position.Y), 22);
                 Thread.Sleep(Settings.Speed);
                 MouseTools.MouseLeftClickEvent();
                 Thread.Sleep(Settings.Speed);
@@ -336,15 +388,13 @@ namespace MoveToStash
             if (child == null)
                 return false;
             var item = child.AsObject<NormalInventoryItem>().Item;
-            if (item == null)
-                return false;
             var bit = GameController.Files.BaseItemTypes.Translate(item?.Path);
-            return bit != null && (bit.BaseName == baseName || item.Path.Contains("CurrencyIdentification"));
+            return bit != null && bit.BaseName == baseName;
         }
 
         private void MouseClickCtrl(SharpDX.Vector2 position)
         {
-            MouseTools.MoveCursor(MouseTools.GetMousePosition(), new Vector2(position.X, position.Y), 20);
+            MouseTools.MoveCursor(MouseTools.GetMousePosition(), new Vector2(position.X, position.Y), 22);
             Thread.Sleep(Settings.Speed);
             KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyLControlVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyDown);
             Thread.Sleep(Settings.Speed);
@@ -388,7 +438,7 @@ namespace MoveToStash
 
         private void UseScrollWisdom(SharpDX.Vector2 scrollPos)
         {
-            MouseTools.MoveCursor(MouseTools.GetMousePosition(), new Vector2(scrollPos.X, scrollPos.Y), 10);
+            MouseTools.MoveCursor(MouseTools.GetMousePosition(), new Vector2(scrollPos.X, scrollPos.Y), 22);
             Thread.Sleep(Settings.Speed);
             MouseTools.MouseRightClickEvent();
             Thread.Sleep(Settings.Speed);
