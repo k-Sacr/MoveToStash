@@ -380,6 +380,8 @@ namespace MoveToStash
                 return "";
             if (st[2] == "Currency" && st.Last().Contains("Essence"))
                 return "Essence";
+            if ((st[2] == "Rings" || st[2] == "Amulets" || st[2] == "Belts") && modsComponent.ItemRarity == ItemRarity.Magic)
+                return "";
             return st[2];
         }
 
