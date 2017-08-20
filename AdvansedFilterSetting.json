@@ -1,0 +1,38 @@
+[
+    {
+        "Type": "Belt3",
+        "ItemRarity": 0,
+        "Tab": 4,
+        "Comment": "Chance a Headhunter"
+    },
+	{
+        "Type": "CurrencyBreachFireShard",
+        "ItemRarity": 0,
+        "Tab": 3,
+        "Comment": "Splinter of Xoph"
+    },
+	{
+        "Type": "CurrencyBreachColdShard",
+        "ItemRarity": 0,
+        "Tab": 3,
+        "Comment": "Splinter of Tul"
+    },
+	{
+        "Type": "CurrencyBreachLightningShard",
+        "ItemRarity": 0,
+        "Tab": 3,
+        "Comment": "Splinter of Esh"
+    },
+	{
+        "Type": "CurrencyBreachPhysicalShard",
+        "ItemRarity": 0,
+        "Tab": 3,
+        "Comment": "Splinter of Uul-Netol"
+    },
+	{
+        "Type": "CurrencyBreachChaosShard",
+        "ItemRarity": 0,
+        "Tab": 3,
+        "Comment": "Splinter of Chayula"
+    },
+]

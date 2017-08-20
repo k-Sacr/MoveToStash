@@ -30,6 +30,7 @@ namespace MoveToStash
         private readonly string[] _twoClick = { "Weapons", "Rings" };
 
         private int[,] _invArr = new int[5, 12];
+        private List<FilterItem> _filterItems = new List<FilterItem>();
 
         public override void Initialise()
         {
@@ -42,6 +43,17 @@ namespace MoveToStash
 
             string json = File.ReadAllText(fileName);
             _invArr = JsonConvert.DeserializeObject<int[,]>(json);
+
+            _filterItems.Add(new FilterItem { Type = "Belt3", ItemRarity = ItemRarity.Normal, Tab = 1, Comment = "Chance a Headhunter" });
+            fileName = PluginDirectory + @"/AdvansedFilterSetting.json";
+            if (!File.Exists(fileName))
+            {
+                var arr = JsonConvert.SerializeObject(_filterItems);
+                File.WriteAllText(fileName, arr);
+            }
+
+            json = File.ReadAllText(fileName);
+            _filterItems = JsonConvert.DeserializeObject<List<FilterItem>>(json);
         }
 
         public override void Render()
@@ -144,10 +156,16 @@ namespace MoveToStash
                     if (string.IsNullOrEmpty(item?.Path))
                         continue;
                     var itemClass = CheckItem(item);
+
+                    if (CheckAdvansedFilter(currentTab, position, item))
+                        continue;
+
                     if (!tabsValue.ContainsKey(currentTab) || !tabsValue[currentTab].Contains(itemClass))
                         continue;
+
                     if (!CheckIngoredCell(position))
                         continue;
+
                     position.X += GameController.Window.GetWindowRectangle().X;
                     position.Y += GameController.Window.GetWindowRectangle().Y;
                     MouseClickCtrl(position.Center);
@@ -163,7 +181,7 @@ namespace MoveToStash
 
         private void BackToTab(int currentTab, int needTab)
         {
-            if(needTab < 0)
+            if (needTab < 0)
                 return;
             if (needTab > currentTab)
             {
@@ -221,7 +239,8 @@ namespace MoveToStash
 
                 if (string.IsNullOrEmpty(item?.Path))
                     continue;
-                if (item.Path.Contains("Currency"))
+                if (item.Path.Contains("Currency") 
+                    || item.Path.Contains("Jewels"))
                     continue;
                 if (!CheckIngoredCell(position))
                     continue;
@@ -432,6 +451,8 @@ namespace MoveToStash
             if (modsComponent.ItemRarity == ItemRarity.Unique)
                 return "";
             var st = item.Path.Split('/');
+
+
             if (st.Length < 3)
                 return "";
             if (st[2] == "Armours")
@@ -500,6 +521,27 @@ namespace MoveToStash
             while (_run);
         }
 
+        private bool CheckAdvansedFilter(int currentTab, RectangleF position, Entity itemClass)
+        {
+            foreach (var item in _filterItems)
+            {
+                    if (!itemClass.Path.Contains(item.Type))
+                        continue;
+                    var modsComponent = itemClass.GetComponent<Mods>();
+
+                    if (item.Tab == currentTab && (modsComponent == null || modsComponent.ItemRarity == item.ItemRarity))
+                    {
+                        if (!CheckIngoredCell(position))
+                            continue;
+                        position.X += GameController.Window.GetWindowRectangle().X;
+                        position.Y += GameController.Window.GetWindowRectangle().Y;
+                        MouseClickCtrl(position.Center);
+                    }
+                    return true;
+            }
+            return false;
+        }
+
         private void UseScrollWisdom(SharpDX.Vector2 scrollPos)
         {
             MouseTools.MoveCursor(MouseTools.GetMousePosition(), new Vector2(scrollPos.X, scrollPos.Y), 22);
@@ -524,5 +566,13 @@ namespace MoveToStash
             else
                 dic[s].Add(name);
         }
+    }
+
+    struct FilterItem
+    {
+        public string Type;
+        public ItemRarity ItemRarity;
+        public int Tab;
+        public string Comment;
     }
 }
