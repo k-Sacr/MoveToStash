@@ -10,7 +10,9 @@ namespace MoveToStash
             Enable = true;
             Indentity = true;
             TabCount = new RangeNode<int>(11, 4, 20);
+            BackTo = new RangeNode<int>(1, 0, 20);
             Speed = new RangeNode<int>(50, 10, 200);
+            
 
             TabNum = true;
             DivinationCards = new RangeNode<int>(1, 0, 20);
@@ -111,6 +113,9 @@ namespace MoveToStash
 
         [Menu("Tab Count:")]
         public RangeNode<int> TabCount { get; set; }
+
+        [Menu("Сome back to:")]
+        public RangeNode<int> BackTo { get; set; }
 
         [Menu("Press F2 - move to stash")]
         public EmptyNode UseF2 { get; set; }

@@ -60,8 +60,8 @@ namespace MoveToStash
                     _holdKey = true;
                     if (_moveThread == null || !_moveThread.IsAlive)
                     {
-                        _moveThread = _ingameState.IngameUi.OpenLeftPanel.IsVisible 
-                            ? new Thread(ScanInventory) 
+                        _moveThread = _ingameState.IngameUi.OpenLeftPanel.IsVisible
+                            ? new Thread(ScanInventory)
                             : new Thread(SellItems);
                         _moveThread.Start();
                         Thread.Sleep(200);
@@ -128,7 +128,10 @@ namespace MoveToStash
             {
                 var items = _inventoryZone.VisibleInventoryItems;
                 if (items.All(i => !CheckIngoredCell(i.GetClientRect())))
+                {
+                    BackToTab(currentTab, Settings.BackTo);
                     return;
+                }
                 foreach (var child in items)
                 {
                     if (!_run)
@@ -154,7 +157,42 @@ namespace MoveToStash
                     return;
                 NextTab(currentTab);
             }
+            BackToTab(currentTab, Settings.BackTo);
             LogMessage("MoveToStash Stop!", 3);
+        }
+
+        private void BackToTab(int currentTab, int needTab)
+        {
+            if(needTab < 0)
+                return;
+            if (needTab > currentTab)
+            {
+                do
+                {
+                    KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyRightVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyDown);
+                    Thread.Sleep(Settings.Speed);
+                    KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyRightVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyUp);
+                    Thread.Sleep(Settings.Speed);
+
+                    if (_ingameState.ServerData.StashPanel.GetStashInventoryByIndex(needTab - 1).AsObject<Element>().IsVisible)
+                        return;
+                }
+                while (_run);
+            }
+            else if (needTab < currentTab)
+            {
+                do
+                {
+                    KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyLeftVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyDown);
+                    Thread.Sleep(Settings.Speed);
+                    KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyLeftVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyUp);
+                    Thread.Sleep(Settings.Speed);
+
+                    if (_ingameState.ServerData.StashPanel.GetStashInventoryByIndex(needTab - 1).AsObject<Element>().IsVisible)
+                        return;
+                }
+                while (_run);
+            }
         }
 
         private void SellItems()
@@ -182,6 +220,8 @@ namespace MoveToStash
                 var position = child.GetClientRect();
 
                 if (string.IsNullOrEmpty(item?.Path))
+                    continue;
+                if (item.Path.Contains("Currency"))
                     continue;
                 if (!CheckIngoredCell(position))
                     continue;
@@ -232,6 +272,7 @@ namespace MoveToStash
                     return;
                 NextTab(currentTab);
             }
+            BackToTab(currentTab, Settings.BackTo);
             LogMessage("MoveToStash Stop!", 3);
         }
 
@@ -249,7 +290,30 @@ namespace MoveToStash
                     return true;
 
                 var items = _stashZone.VisibleInventoryItems;
-                if (items != null && items.Count > 0)
+                if (items != null && items.Count > 0 && type == "Weapons")
+                    foreach (var child in items)
+                    {
+                        var item = child.AsObject<NormalInventoryItem>().Item;
+                        if (string.IsNullOrEmpty(item?.Path) || item.Path.Contains("TwoHandWeapons"))
+                        {
+                            if (!_run)
+                                return false;
+
+                            var position = child.GetClientRect().Center;
+                            position.X += GameController.Window.GetWindowRectangle().X;
+                            position.Y += GameController.Window.GetWindowRectangle().Y;
+                            var modsComponent = item?.GetComponent<Mods>();
+
+                            if (modsComponent != null
+                                && modsComponent.ItemRarity == ItemRarity.Rare
+                                && modsComponent.ItemLevel >= 60)
+                            {
+                                MouseClickCtrl(position);
+                                return true;
+                            }
+                        }
+                    }
+                else if (items != null && items.Count > 0)
                     foreach (var child in items)
                     {
                         if (!_run)
@@ -268,8 +332,6 @@ namespace MoveToStash
                         {
                             MouseClickCtrl(position);
                             if (--count <= 0)
-                                return true;
-                            if (item.Path.Contains("TwoHandWeapons"))
                                 return true;
                         }
                     }
