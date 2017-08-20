@@ -332,7 +332,7 @@ namespace MoveToStash
                             }
                         }
                     }
-                else if (items != null && items.Count > 0)
+                if (items != null && items.Count > 0)
                     foreach (var child in items)
                     {
                         if (!_run)
