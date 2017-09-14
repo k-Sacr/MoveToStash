@@ -44,7 +44,7 @@ namespace MoveToStash
             string json = File.ReadAllText(fileName);
             _invArr = JsonConvert.DeserializeObject<int[,]>(json);
 
-            _filterItems.Add(new FilterItem { Type = "Belt3", ItemRarity = ItemRarity.Normal, Tab = 1, Comment = "Chance a Headhunter" });
+            _filterItems.Add(new FilterItem { Type = "Belt3", ItemRarity = 0, Tab = 1, Comment = "Chance a Headhunter" });
             fileName = PluginDirectory + @"/AdvansedFilterSetting.json";
             if (!File.Exists(fileName))
             {
@@ -525,19 +525,22 @@ namespace MoveToStash
         {
             foreach (var item in _filterItems)
             {
-                    if (!itemClass.Path.Contains(item.Type))
-                        continue;
-                    var modsComponent = itemClass.GetComponent<Mods>();
+                if (!itemClass.Path.Contains(item.Type))
+                    continue;
 
-                    if (item.Tab == currentTab && (modsComponent == null || modsComponent.ItemRarity == item.ItemRarity))
-                    {
-                        if (!CheckIngoredCell(position))
-                            continue;
-                        position.X += GameController.Window.GetWindowRectangle().X;
-                        position.Y += GameController.Window.GetWindowRectangle().Y;
-                        MouseClickCtrl(position.Center);
-                    }
-                    return true;
+                var modsComponent = itemClass.GetComponent<Mods>();
+                if (item.ItemRarity < 4 && modsComponent != null && modsComponent.ItemRarity != (ItemRarity) item.ItemRarity)
+                    return false;
+
+                if (item.Tab == currentTab)
+                {
+                    if (!CheckIngoredCell(position))
+                        continue;
+                    position.X += GameController.Window.GetWindowRectangle().X;
+                    position.Y += GameController.Window.GetWindowRectangle().Y;
+                    MouseClickCtrl(position.Center);
+                }
+                return true;
             }
             return false;
         }
@@ -571,7 +574,7 @@ namespace MoveToStash
     struct FilterItem
     {
         public string Type;
-        public ItemRarity ItemRarity;
+        public int ItemRarity;
         public int Tab;
         public string Comment;
     }
