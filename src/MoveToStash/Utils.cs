@@ -61,5 +61,12 @@ namespace MoveToStash
         }
     }
 
+    struct FilterItem
+    {
+        public string Type;
+        public int ItemRarity;
+        public int Tab;
+        public string Comment;
+    }
 
 }

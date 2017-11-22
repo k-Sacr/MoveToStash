@@ -9,6 +9,7 @@ using PoeHUD.Hud;
 using PoeHUD.Hud.Menu;
 using PoeHUD.Hud.UI;
 using PoeHUD.Models.Enums;
+using PoeHUD.Models.Interfaces;
 using PoeHUD.Plugins;
 using PoeHUD.Poe;
 using PoeHUD.Poe.Components;
@@ -28,6 +29,7 @@ namespace MoveToStash
 
         private bool _run;
         private bool _holdKey;
+        private bool _onlyChaosSet;
 
         private readonly string[] _oneClick = { "BodyArmours", "Helmets", "Boots", "Gloves", "Belts", "Amulets" };
         private readonly string[] _twoClick = { "Weapons", "Rings" };
@@ -69,17 +71,6 @@ namespace MoveToStash
             MenuPlugin.eMouseEvent += OnMouseEvent;
         }
 
-        private void OnMouseEvent(MouseEventID id, SharpDX.Vector2 position)
-        {
-            _mouseEventId = null;
-            if (!Settings.Enable)
-                return;
-            MousePosition = position;
-            if (id != MouseEventID.LeftButtonUp)
-                return;
-            _mouseEventId = id;
-        }
-
         public override void Render()
         {
             try
@@ -89,7 +80,7 @@ namespace MoveToStash
                 if (!_ingameState.IngameUi.InventoryPanel.IsVisible)
                     return;
 
-                _inventory = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory];
+                _inventory = _ingameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory];
                 _inventoryZone = _inventory.InventoryUiElement.GetClientRect();
                 if (!_holdKey && WinApi.IsKeyDown(Settings.MoveKey.Value))
                 {
@@ -106,7 +97,6 @@ namespace MoveToStash
                     {
                         _run = false;
                         LogMessage("Stop!", 3);
-
                         Thread.Sleep(200);
                     }
                 }
@@ -139,7 +129,8 @@ namespace MoveToStash
                     float hCell = invPoint.Height / 5;
                     _rectMoveButton = new RectangleF(_inventoryZone.X, _inventoryZone.Y - hCell, wCell, hCell * 0.7f);
                     var invItem = _ingameState.UIHover.AsObject<NormalInventoryItem>();
-                    if (_ingameState.IngameUi.InventoryPanel.IsVisible && (invItem.Item == null || !invItem.Item.IsValid) || _run)
+                    if (_ingameState.IngameUi.InventoryPanel.IsVisible
+                        && (invItem.Item == null || !invItem.Item.IsValid) || _run)
                     {
                         #region MoveButton
 
@@ -164,16 +155,24 @@ namespace MoveToStash
                         }
                         if (_moveThread == null || !_moveThread.IsAlive)
                         {
-                            if (_ingameState.IngameUi.InventoryPanel.IsVisible && !_ingameState.IngameUi.OpenLeftPanel.IsVisible)
+                            if (_ingameState.IngameUi.InventoryPanel.IsVisible
+                                && !_ingameState.IngameUi.OpenLeftPanel.IsVisible)
+                            {
                                 Graphics.DrawText("<-Sell", 18, _rectMoveButton.Center, Color.DarkGoldenrod,
                                     FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
-                            else if (_ingameState.IngameUi.InventoryPanel.IsVisible && _ingameState.IngameUi.OpenLeftPanel.IsVisible)
+                            }
+
+                            else if (_ingameState.IngameUi.InventoryPanel.IsVisible
+                                     && _ingameState.IngameUi.OpenLeftPanel.IsVisible)
+                            {
                                 Graphics.DrawText("<-Move", 18, _rectMoveButton.Center, Color.DarkGoldenrod,
                                     FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
+                            }
                         }
                         else if (_run && _moveThread != null && _moveThread.IsAlive)
                         {
-                            Graphics.DrawText("work...", 18, _rectMoveButton.Center, Color.DarkGoldenrod, FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
+                            Graphics.DrawText("work...", 18, _rectMoveButton.Center,
+                                Color.DarkGoldenrod, FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
                         }
 
                         #endregion
@@ -203,7 +202,8 @@ namespace MoveToStash
                             }
                             if (_moveThread == null || !_moveThread.IsAlive)
                             {
-                                if (_ingameState.IngameUi.InventoryPanel.IsVisible && _ingameState.IngameUi.OpenLeftPanel.IsVisible)
+                                if (_ingameState.IngameUi.InventoryPanel.IsVisible
+                                    && _ingameState.IngameUi.OpenLeftPanel.IsVisible)
                                     Graphics.DrawText("Set->", 18, _rectChaosButton.Center, Color.DarkGoldenrod,
                                         FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
                             }
@@ -224,6 +224,17 @@ namespace MoveToStash
                 Log(e.Source);
                 throw;
             }
+        }
+
+        private void OnMouseEvent(MouseEventID id, SharpDX.Vector2 position)
+        {
+            _mouseEventId = null;
+            if (!Settings.Enable)
+                return;
+            MousePosition = position;
+            if (id != MouseEventID.LeftButtonUp)
+                return;
+            _mouseEventId = id;
         }
 
         private void ScanInventory()
@@ -365,7 +376,7 @@ namespace MoveToStash
 
         private void ChaosRecipe()
         {
-            if (!GameController.Game.IngameState.IngameUi.InventoryPanel.IsVisible)
+            if (!_ingameState.IngameUi.InventoryPanel.IsVisible)
             {
                 _run = false;
                 return;
@@ -379,7 +390,7 @@ namespace MoveToStash
 
             if (!_run)
                 return;
-
+            _onlyChaosSet = Settings.ChaosSet.Value;
             var currentTab = 1;
             while (currentTab <= Settings.TabCount && _run)
             {
@@ -421,51 +432,25 @@ namespace MoveToStash
                     return true;
 
                 var items = _stash.VisibleInventoryItems;
-                if (items != null && items.Count > 0 && type == "Weapons")
-                    foreach (var child in items)
-                    {
-                        var item = child.AsObject<NormalInventoryItem>().Item;
-                        if (string.IsNullOrEmpty(item?.Path) || item.Path.Contains("TwoHandWeapons"))
-                        {
-                            if (!_run)
-                                return false;
-
-                            var position = child.GetClientRect().Center;
-                            position.X += GameController.Window.GetWindowRectangle().X;
-                            position.Y += GameController.Window.GetWindowRectangle().Y;
-                            var modsComponent = item?.GetComponent<Mods>();
-
-                            if (modsComponent != null
-                                && modsComponent.ItemRarity == ItemRarity.Rare
-                                && modsComponent.ItemLevel >= 60)
-                            {
-                                MouseClickCtrl(position);
-                                return true;
-                            }
-                        }
-                    }
                 if (items != null && items.Count > 0)
-                    foreach (var child in items)
+                {
+                    if (type == "Weapons")
                     {
-                        if (!_run)
-                            return false;
-
-                        var item = child.AsObject<NormalInventoryItem>().Item;
-                        var position = child.GetClientRect().Center;
-                        position.X += GameController.Window.GetWindowRectangle().X;
-                        position.Y += GameController.Window.GetWindowRectangle().Y;
-                        var modsComponent = item?.GetComponent<Mods>();
-
-                        if (string.IsNullOrEmpty(item?.Path) || item.Path.Contains("Talisman"))
-                            continue;
-                        var itemClass = CheckItem(item);
-                        if (type == itemClass && modsComponent.ItemRarity == ItemRarity.Rare && modsComponent.ItemLevel >= 60)
+                        var f = FindItem(items, type, 1, 100, "TwoHandWeapons");
+                        if (f)
+                            return true;
+                    }
+                    else
+                    {
+                        if (_onlyChaosSet)
                         {
-                            MouseClickCtrl(position);
-                            if (--count <= 0)
+                            var f = FindItem(items, type, count, 70);
+                            if (f)
                                 return true;
                         }
+                        return FindItem(items, type, count, 100);
                     }
+                }
             }
             catch (Exception e)
             {
@@ -474,6 +459,37 @@ namespace MoveToStash
                 throw;
             }
             LogMessage($">>> Not found item: {type} in current tab", 5);
+            return false;
+        }
+
+        private bool FindItem(List<NormalInventoryItem> items, string type, int count, int maxLv, string detail = null)
+        {
+            foreach (var child in items)
+            {
+                if (!_run)
+                    return false;
+
+                var item = child.AsObject<NormalInventoryItem>().Item;
+                var position = child.GetClientRect().Center;
+                position.X += GameController.Window.GetWindowRectangle().X;
+                position.Y += GameController.Window.GetWindowRectangle().Y;
+                var modsComponent = item?.GetComponent<Mods>();
+
+                if (string.IsNullOrEmpty(item?.Path) || item.Path.Contains("Talisman"))
+                    continue;
+                var itemClass = CheckItem(item);
+                if (type == itemClass
+                    && modsComponent.ItemRarity == ItemRarity.Rare
+                    && modsComponent.ItemLevel >= 60 && modsComponent.ItemLevel <= maxLv
+                    && (detail == null || item.Path.Contains(detail)))
+                {
+                    MouseClickCtrl(position);
+                    if (modsComponent.ItemLevel < 70)
+                        _onlyChaosSet = false;
+                    if (--count <= 0)
+                        return true;
+                }
+            }
             return false;
         }
 
@@ -528,7 +544,7 @@ namespace MoveToStash
             KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyEventShiftVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyUp);
         }
 
-        private static string CheckItem(Entity item)
+        private static string CheckItem(IEntity item)
         {
             var modsComponent = item?.GetComponent<Mods>();
             if (modsComponent == null)
@@ -537,15 +553,14 @@ namespace MoveToStash
                 return "";
             var st = item.Path.Split('/');
 
-
             if (st.Length < 3)
                 return "";
             if (st[2] == "Armours")
-                return modsComponent.ItemRarity == ItemRarity.Rare ? st[3] : "";
+                return (modsComponent.ItemRarity == ItemRarity.Rare && modsComponent.ItemLevel >= 60) ? st[3] : "";
             if (st[2] == "Weapons" && (st.Last() == "OneHandMace4" || st.Last() == "OneHandMace11" || st.Last() == "OneHandMace18"))
                 return "StoneHammer";
-            if (st[2] == "Weapons" && modsComponent.ItemRarity != ItemRarity.Rare)
-                return "";
+            if (st[2] == "Weapons")
+                return (modsComponent.ItemRarity == ItemRarity.Rare && modsComponent.ItemLevel >= 60) ? st[2] : "";
             if (st[2] == "Currency" && st.Last().Contains("Essence"))
                 return "Essence";
             if ((st[2] == "Rings" || st[2] == "Amulets" || st[2] == "Belts") && modsComponent.ItemRarity == ItemRarity.Magic)
@@ -553,7 +568,7 @@ namespace MoveToStash
             return st[2];
         }
 
-        private bool CheckNameItem(Element child, string baseName)
+        private bool CheckNameItem(RemoteMemoryObject child, string baseName)
         {
             if (child == null)
                 return false;
@@ -606,25 +621,22 @@ namespace MoveToStash
             while (_run);
         }
 
-        private bool CheckAdvansedFilter(int currentTab, RectangleF position, Entity itemClass)
+        private bool CheckAdvansedFilter(int currentTab, RectangleF position, IEntity itemClass)
         {
             foreach (var item in _filterItems)
             {
                 if (!itemClass.Path.Contains(item.Type))
                     continue;
-
                 var modsComponent = itemClass.GetComponent<Mods>();
                 if (item.ItemRarity < 4 && modsComponent != null && modsComponent.ItemRarity != (ItemRarity) item.ItemRarity)
                     return false;
-
-                if (item.Tab == currentTab)
-                {
-                    if (!CheckIngoredCell(position))
-                        continue;
-                    position.X += GameController.Window.GetWindowRectangle().X;
-                    position.Y += GameController.Window.GetWindowRectangle().Y;
-                    MouseClickCtrl(position.Center);
-                }
+                if (item.Tab != currentTab)
+                    return true;
+                if (!CheckIngoredCell(position))
+                    continue;
+                position.X += GameController.Window.GetWindowRectangle().X;
+                position.Y += GameController.Window.GetWindowRectangle().Y;
+                MouseClickCtrl(position.Center);
                 return true;
             }
             return false;
@@ -643,15 +655,5 @@ namespace MoveToStash
         {
             File.AppendAllText("log.txt", message + "\n");
         }
-    }
-
-    
-
-    struct FilterItem
-    {
-        public string Type;
-        public int ItemRarity;
-        public int Tab;
-        public string Comment;
     }
 }

@@ -18,6 +18,7 @@ namespace MoveToStash
             MoveKey = Keys.F2;
             ChaosKey = Keys.F3;
             ShowButtons = true;
+            ChaosSet = true;
 
             DivinationCards = new RangeNode<int>(1, 0, 20);
             Currency = new RangeNode<int>(2, 0, 20);
@@ -48,6 +49,9 @@ namespace MoveToStash
 
         [Menu("Identify items?")]
         public ToggleNode Indentity { get; set; }
+
+        [Menu("Chaos set priority?")]
+        public ToggleNode ChaosSet { get; set; }
 
         [Menu("Speed:")]
         public RangeNode<int> Speed { get; set; }
