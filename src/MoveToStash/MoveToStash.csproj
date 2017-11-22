@@ -72,6 +72,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Utils.cs" />
     <Compile Include="MouseTools.cs" />
     <Compile Include="MoveToStash.cs" />
     <Compile Include="MoveToStashSetting.cs" />

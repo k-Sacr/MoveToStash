@@ -1,4 +1,5 @@
-﻿using PoeHUD.Hud.Settings;
+﻿using System.Windows.Forms;
+using PoeHUD.Hud.Settings;
 using PoeHUD.Plugins;
 
 namespace MoveToStash
@@ -8,13 +9,16 @@ namespace MoveToStash
         public MoveToStashSetting()
         {
             Enable = true;
+            TabNum = true;
             Indentity = true;
+            Speed = new RangeNode<int>(50, 10, 200);
+
             TabCount = new RangeNode<int>(11, 4, 20);
             BackTo = new RangeNode<int>(1, 0, 20);
-            Speed = new RangeNode<int>(50, 10, 200);
-            
+            MoveKey = Keys.F2;
+            ChaosKey = Keys.F3;
+            ShowButtons = true;
 
-            TabNum = true;
             DivinationCards = new RangeNode<int>(1, 0, 20);
             Currency = new RangeNode<int>(2, 0, 20);
             Gems = new RangeNode<int>(3, 0, 20);
@@ -37,12 +41,37 @@ namespace MoveToStash
             StoneHammer = new RangeNode<int>(10, 0, 20);
         }
 
-        
+        #region Setting
 
         [Menu("Tab num(start at left):", 10)]
         public ToggleNode TabNum { get; set; }
 
-        #region Setting
+        [Menu("Identify items?")]
+        public ToggleNode Indentity { get; set; }
+
+        [Menu("Speed:")]
+        public RangeNode<int> Speed { get; set; }
+
+        [Menu("Tab Count:")]
+        public RangeNode<int> TabCount { get; set; }
+
+        [Menu("Сome back to:")]
+        public RangeNode<int> BackTo { get; set; }
+
+        [Menu("Show buttons?")]
+        public ToggleNode ShowButtons { get; set; }
+
+        [Menu("Move to stash Key")]
+        public HotkeyNode MoveKey { get; set; }
+
+        [Menu("Chaos recipe Key")]
+        public HotkeyNode ChaosKey { get; set; }
+        
+        #endregion
+
+
+        #region Setting Items
+
         [Menu("Currency", 12, 10)]
         public RangeNode<int> Currency { get; set; }
 
@@ -104,23 +133,5 @@ namespace MoveToStash
         public RangeNode<int> StoneHammer { get; set; }
 
         #endregion
-
-        [Menu("Identify items?")]
-        public ToggleNode Indentity { get; set; }
-
-        [Menu("Speed:")]
-        public RangeNode<int> Speed { get; set; }
-
-        [Menu("Tab Count:")]
-        public RangeNode<int> TabCount { get; set; }
-
-        [Menu("Сome back to:")]
-        public RangeNode<int> BackTo { get; set; }
-
-        [Menu("Press F2 - move to stash")]
-        public EmptyNode UseF2 { get; set; }
-
-        [Menu("Press F3 - Chaos recipe")]
-        public EmptyNode UseF3 { get; set; }
     }
 }

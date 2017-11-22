@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Windows.Forms;
 using Newtonsoft.Json;
 using PoeHUD.Framework;
+using PoeHUD.Hud;
+using PoeHUD.Hud.Menu;
+using PoeHUD.Hud.UI;
 using PoeHUD.Models.Enums;
 using PoeHUD.Plugins;
 using PoeHUD.Poe;
@@ -13,6 +15,7 @@ using PoeHUD.Poe.Components;
 using PoeHUD.Poe.Elements;
 using PoeHUD.Poe.RemoteMemoryObjects;
 using SharpDX;
+using SharpDX.Direct3D9;
 
 namespace MoveToStash
 {
@@ -20,8 +23,8 @@ namespace MoveToStash
     {
         private Thread _moveThread;
         private IngameState _ingameState;
-        private Inventory _inventoryZone;
-        private Inventory _stashZone;
+        private Inventory _inventory;
+        private Inventory _stash;
 
         private bool _run;
         private bool _holdKey;
@@ -31,6 +34,13 @@ namespace MoveToStash
 
         private int[,] _invArr = new int[5, 12];
         private List<FilterItem> _filterItems = new List<FilterItem>();
+
+        public static Graphics UGraphics;
+        public static SharpDX.Vector2 MousePosition;
+        private RectangleF _rectMoveButton;
+        private RectangleF _rectChaosButton;
+        private RectangleF _inventoryZone;
+        private MouseEventID? _mouseEventId;
 
         public override void Initialise()
         {
@@ -54,6 +64,20 @@ namespace MoveToStash
 
             json = File.ReadAllText(fileName);
             _filterItems = JsonConvert.DeserializeObject<List<FilterItem>>(json);
+
+            UGraphics = Graphics;
+            MenuPlugin.eMouseEvent += OnMouseEvent;
+        }
+
+        private void OnMouseEvent(MouseEventID id, SharpDX.Vector2 position)
+        {
+            _mouseEventId = null;
+            if (!Settings.Enable)
+                return;
+            MousePosition = position;
+            if (id != MouseEventID.LeftButtonUp)
+                return;
+            _mouseEventId = id;
         }
 
         public override void Render()
@@ -62,12 +86,12 @@ namespace MoveToStash
             {
                 _ingameState = GameController.Game.IngameState;
 
-                if (!_ingameState.IngameUi.InventoryPanel.IsVisible && !_ingameState.IngameUi.OpenLeftPanel.IsVisible)
+                if (!_ingameState.IngameUi.InventoryPanel.IsVisible)
                     return;
 
-                _inventoryZone = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory];
-
-                if (!_holdKey && WinApi.IsKeyDown(Keys.F2))
+                _inventory = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory];
+                _inventoryZone = _inventory.InventoryUiElement.GetClientRect();
+                if (!_holdKey && WinApi.IsKeyDown(Settings.MoveKey.Value))
                 {
                     _holdKey = true;
                     if (_moveThread == null || !_moveThread.IsAlive)
@@ -86,10 +110,10 @@ namespace MoveToStash
                         Thread.Sleep(200);
                     }
                 }
-                else if (_holdKey && !WinApi.IsKeyDown(Keys.F2))
+                else if (_holdKey && !WinApi.IsKeyDown(Settings.MoveKey.Value))
                     _holdKey = false;
 
-                if (!_holdKey && WinApi.IsKeyDown(Keys.F3))
+                if (!_holdKey && WinApi.IsKeyDown(Settings.ChaosKey.Value))
                 {
                     _holdKey = true;
                     if (_moveThread == null || !_moveThread.IsAlive)
@@ -105,8 +129,94 @@ namespace MoveToStash
                         Thread.Sleep(200);
                     }
                 }
-                else if (_holdKey && !WinApi.IsKeyDown(Keys.F3))
+                else if (_holdKey && !WinApi.IsKeyDown(Settings.ChaosKey.Value))
                     _holdKey = false;
+
+                if (Settings.ShowButtons.Value)
+                {
+                    var invPoint = _inventoryZone;
+                    float wCell = invPoint.Width / 12 * 2;
+                    float hCell = invPoint.Height / 5;
+                    _rectMoveButton = new RectangleF(_inventoryZone.X, _inventoryZone.Y - hCell, wCell, hCell * 0.7f);
+                    var invItem = _ingameState.UIHover.AsObject<NormalInventoryItem>();
+                    if (_ingameState.IngameUi.InventoryPanel.IsVisible && (invItem.Item == null || !invItem.Item.IsValid) || _run)
+                    {
+                        #region MoveButton
+
+                        Utils.DrawButton(_rectMoveButton, 1, new Color(55, 21, 0), Color.DarkGoldenrod);
+                        if (_rectMoveButton.Contains(MousePosition) && _mouseEventId == MouseEventID.LeftButtonUp)
+                        {
+                            _mouseEventId = null;
+                            if (_moveThread == null || !_moveThread.IsAlive)
+                            {
+                                _moveThread = _ingameState.IngameUi.OpenLeftPanel.IsVisible
+                                    ? new Thread(ScanInventory)
+                                    : new Thread(SellItems);
+                                _moveThread.Start();
+                                Thread.Sleep(65);
+                            }
+                            else if (_run && _moveThread != null && _moveThread.IsAlive)
+                            {
+                                _run = false;
+                                LogMessage("Stop!", 3);
+                                Thread.Sleep(200);
+                            }
+                        }
+                        if (_moveThread == null || !_moveThread.IsAlive)
+                        {
+                            if (_ingameState.IngameUi.InventoryPanel.IsVisible && !_ingameState.IngameUi.OpenLeftPanel.IsVisible)
+                                Graphics.DrawText("<-Sell", 18, _rectMoveButton.Center, Color.DarkGoldenrod,
+                                    FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
+                            else if (_ingameState.IngameUi.InventoryPanel.IsVisible && _ingameState.IngameUi.OpenLeftPanel.IsVisible)
+                                Graphics.DrawText("<-Move", 18, _rectMoveButton.Center, Color.DarkGoldenrod,
+                                    FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
+                        }
+                        else if (_run && _moveThread != null && _moveThread.IsAlive)
+                        {
+                            Graphics.DrawText("work...", 18, _rectMoveButton.Center, Color.DarkGoldenrod, FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
+                        }
+
+                        #endregion
+
+                        #region ChaosButton
+
+                        if (_ingameState.IngameUi.OpenLeftPanel.IsVisible)
+                        {
+                            _rectChaosButton = _rectMoveButton;
+                            _rectChaosButton.Y = _rectMoveButton.Y - (_rectMoveButton.Height + 10);
+                            Utils.DrawButton(_rectChaosButton, 1, new Color(55, 21, 0), Color.DarkGoldenrod);
+                            if (_rectChaosButton.Contains(MousePosition) && _mouseEventId == MouseEventID.LeftButtonUp)
+                            {
+                                _mouseEventId = null;
+                                if (_moveThread == null || !_moveThread.IsAlive)
+                                {
+                                    _moveThread = new Thread(ChaosRecipe);
+                                    _moveThread.Start();
+                                    Thread.Sleep(65);
+                                }
+                                else if (_run && _moveThread != null && _moveThread.IsAlive)
+                                {
+                                    _run = false;
+                                    LogMessage("Stop!", 3);
+                                    Thread.Sleep(200);
+                                }
+                            }
+                            if (_moveThread == null || !_moveThread.IsAlive)
+                            {
+                                if (_ingameState.IngameUi.InventoryPanel.IsVisible && _ingameState.IngameUi.OpenLeftPanel.IsVisible)
+                                    Graphics.DrawText("Set->", 18, _rectChaosButton.Center, Color.DarkGoldenrod,
+                                        FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
+                            }
+                            else if (_run && _moveThread != null && _moveThread.IsAlive)
+                            {
+                                Graphics.DrawText("work...", 18, _rectChaosButton.Center, Color.DarkGoldenrod,
+                                    FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
+                            }
+                        }
+
+                        #endregion
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -126,7 +236,7 @@ namespace MoveToStash
             LogMessage("MoveToStash start!", 3);
             Thread.Sleep(Settings.Speed * 3);
             _run = true;
-            var tabsValue = ReadTabSetting();
+            var tabsValue = MyDictionary.ReadTabSetting(Settings);
 
             if (Settings.Indentity)
                 Indentity();
@@ -138,7 +248,7 @@ namespace MoveToStash
             int currentTab = 1;
             while (currentTab <= Settings.TabCount && _run)
             {
-                var items = _inventoryZone.VisibleInventoryItems;
+                var items = _inventory.VisibleInventoryItems;
                 if (items.All(i => !CheckIngoredCell(i.GetClientRect())))
                 {
                     BackToTab(currentTab, Settings.BackTo);
@@ -177,6 +287,7 @@ namespace MoveToStash
             }
             BackToTab(currentTab, Settings.BackTo);
             LogMessage("MoveToStash Stop!", 3);
+            _run = false;
         }
 
         private void BackToTab(int currentTab, int needTab)
@@ -226,7 +337,7 @@ namespace MoveToStash
             if (!_run)
                 return;
 
-            var items = _inventoryZone.VisibleInventoryItems;
+            var items = _inventory.VisibleInventoryItems;
             if (items.All(i => !CheckIngoredCell(i.GetClientRect())))
                 return;
             foreach (var child in items)
@@ -239,7 +350,7 @@ namespace MoveToStash
 
                 if (string.IsNullOrEmpty(item?.Path))
                     continue;
-                if (item.Path.Contains("Currency") 
+                if (item.Path.Contains("Currency")
                     || item.Path.Contains("Jewels"))
                     continue;
                 if (!CheckIngoredCell(position))
@@ -262,7 +373,7 @@ namespace MoveToStash
             LogMessage("Chaos Recipe start!", 3);
             Thread.Sleep(Settings.Speed * 3);
             _run = true;
-            var tabsValue = ReadTabSetting();
+            var tabsValue = MyDictionary.ReadTabSetting(Settings);
 
             FirstTab();
 
@@ -292,6 +403,7 @@ namespace MoveToStash
                 NextTab(currentTab);
             }
             BackToTab(currentTab, Settings.BackTo);
+            _run = false;
             LogMessage("MoveToStash Stop!", 3);
         }
 
@@ -299,7 +411,7 @@ namespace MoveToStash
         {
             try
             {
-                var itemInInv = _inventoryZone.VisibleInventoryItems.Select(element => element.AsObject<NormalInventoryItem>().Item);
+                var itemInInv = _inventory.VisibleInventoryItems.Select(element => element.AsObject<NormalInventoryItem>().Item);
                 count -=
                     itemInInv.Where(t => t != null && t.Path.Contains(type))
                         .Select(entity => entity.GetComponent<Mods>())
@@ -308,7 +420,7 @@ namespace MoveToStash
                 if (count <= 0)
                     return true;
 
-                var items = _stashZone.VisibleInventoryItems;
+                var items = _stash.VisibleInventoryItems;
                 if (items != null && items.Count > 0 && type == "Weapons")
                     foreach (var child in items)
                     {
@@ -367,7 +479,7 @@ namespace MoveToStash
 
         private bool CheckIngoredCell(RectangleF position)
         {
-            var invPoint = _inventoryZone.InventoryUiElement.GetClientRect();
+            var invPoint = _inventoryZone;
             float wCell = invPoint.Width / 12;
             float hCell = invPoint.Height / 5;
             int x = (int) ((1f + position.X - invPoint.X) / wCell);
@@ -380,7 +492,7 @@ namespace MoveToStash
             if (!_run)
                 return;
 
-            var scroll = _inventoryZone.VisibleInventoryItems.FirstOrDefault(element => CheckNameItem(element, "Scroll of Wisdom"));
+            var scroll = _inventory.VisibleInventoryItems.FirstOrDefault(element => CheckNameItem(element, "Scroll of Wisdom"));
             if (scroll == null)
                 return;
             var scrollPos = scroll.GetClientRect().Center;
@@ -388,7 +500,7 @@ namespace MoveToStash
             scrollPos.Y += GameController.Window.GetWindowRectangle().Y;
             UseScrollWisdom(scrollPos);
 
-            var items = _inventoryZone.VisibleInventoryItems;
+            var items = _inventory.VisibleInventoryItems;
             foreach (var child in items)
             {
                 if (!_run)
@@ -414,33 +526,6 @@ namespace MoveToStash
             }
             Thread.Sleep(Settings.Speed);
             KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyEventShiftVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyUp);
-        }
-
-        private Dictionary<int, HashSet<string>> ReadTabSetting()
-        {
-            var dict = new Dictionary<int, HashSet<string>>();
-            dict.AddToDic(Settings.Amulets.Value, nameof(Settings.Amulets));
-            dict.AddToDic(Settings.Belts.Value, nameof(Settings.Belts));
-            dict.AddToDic(Settings.BodyArmours.Value, nameof(Settings.BodyArmours));
-            dict.AddToDic(Settings.Boots.Value, nameof(Settings.Boots));
-            dict.AddToDic(Settings.Currency.Value, nameof(Settings.Currency));
-            dict.AddToDic(Settings.DivinationCards.Value, nameof(Settings.DivinationCards));
-            dict.AddToDic(Settings.Flasks.Value, nameof(Settings.Flasks));
-            dict.AddToDic(Settings.Gems.Value, nameof(Settings.Gems));
-            dict.AddToDic(Settings.Gloves.Value, nameof(Settings.Gloves));
-            dict.AddToDic(Settings.Shields.Value, nameof(Settings.Shields));
-            dict.AddToDic(Settings.Weapons.Value, nameof(Settings.Weapons));
-            dict.AddToDic(Settings.Quivers.Value, nameof(Settings.Quivers));
-            dict.AddToDic(Settings.Helmets.Value, nameof(Settings.Helmets));
-            dict.AddToDic(Settings.Rings.Value, nameof(Settings.Rings));
-            dict.AddToDic(Settings.StoneHammer.Value, nameof(Settings.StoneHammer));
-            dict.AddToDic(Settings.Jewels.Value, nameof(Settings.Jewels));
-            dict.AddToDic(Settings.MapFragments.Value, nameof(Settings.MapFragments));
-            dict.AddToDic(Settings.Maps.Value, nameof(Settings.Maps));
-            dict.AddToDic(Settings.Leaguestones.Value, nameof(Settings.Leaguestones));
-            dict.AddToDic(Settings.Essence.Value, nameof(Settings.Essence));
-
-            return dict;
         }
 
         private static string CheckItem(Entity item)
@@ -503,7 +588,7 @@ namespace MoveToStash
                 inv = _ingameState.ServerData.StashPanel.GetStashInventoryByIndex(stashNum - 1);
             }
             while (inv == null && _run && delay > 0);
-            _stashZone = inv;
+            _stash = inv;
         }
 
         private void FirstTab()
@@ -560,16 +645,7 @@ namespace MoveToStash
         }
     }
 
-    internal static class DictionaryExtensions
-    {
-        public static void AddToDic(this Dictionary<int, HashSet<string>> dic, int s, string name)
-        {
-            if (!dic.ContainsKey(s))
-                dic[s] = new HashSet<string> { name };
-            else
-                dic[s].Add(name);
-        }
-    }
+    
 
     struct FilterItem
     {
