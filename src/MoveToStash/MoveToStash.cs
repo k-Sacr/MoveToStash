@@ -392,6 +392,7 @@ namespace MoveToStash
                 return;
             _onlyChaosSet = Settings.ChaosSet.Value;
             var currentTab = 1;
+            bool needTwoHand = true;
             while (currentTab <= Settings.TabCount && _run)
             {
                 if (tabsValue.ContainsKey(currentTab))
@@ -399,12 +400,12 @@ namespace MoveToStash
                     {
                         if (_oneClick.Contains(type))
                         {
-                            if (!ClickItem(type))
+                            if (!ClickItem(type, ref needTwoHand))
                                 break;
                         }
                         else if (_twoClick.Contains(type))
                         {
-                            if (!ClickItem(type, 2))
+                            if (!ClickItem(type, ref needTwoHand, 2))
                                 break;
                         }
                     }
@@ -418,7 +419,7 @@ namespace MoveToStash
             LogMessage("MoveToStash Stop!", 3);
         }
 
-        private bool ClickItem(string type, int count = 1)
+        private bool ClickItem(string type, ref bool needTwoHand, int count = 1)
         {
             try
             {
@@ -434,22 +435,22 @@ namespace MoveToStash
                 var items = _stash.VisibleInventoryItems;
                 if (items != null && items.Count > 0)
                 {
-                    if (type == "Weapons")
+                    if (type == "Weapons" && needTwoHand)
                     {
                         var f = FindItem(items, type, 1, 100, "TwoHandWeapons");
                         if (f)
+                        {
+                            needTwoHand = false;
+                            return true;
+                        }
+                    }
+                    if (_onlyChaosSet)
+                    {
+                        var f = FindItem(items, type, count, 70);
+                        if (f)
                             return true;
                     }
-                    else
-                    {
-                        if (_onlyChaosSet)
-                        {
-                            var f = FindItem(items, type, count, 70);
-                            if (f)
-                                return true;
-                        }
-                        return FindItem(items, type, count, 100);
-                    }
+                    return FindItem(items, type, count, 100);
                 }
             }
             catch (Exception e)
