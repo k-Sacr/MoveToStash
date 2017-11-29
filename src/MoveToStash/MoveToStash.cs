@@ -401,12 +401,18 @@ namespace MoveToStash
                         if (_oneClick.Contains(type))
                         {
                             if (!ClickItem(type, ref needTwoHand))
+                            {
+                                LogMessage($">>> Not found item: {type} in current tab", 5);
                                 break;
+                            }
                         }
                         else if (_twoClick.Contains(type))
                         {
                             if (!ClickItem(type, ref needTwoHand, 2))
+                            {
+                                LogMessage($">>> Not found item: {type} in current tab", 5);
                                 break;
+                            }
                         }
                     }
                 currentTab++;
