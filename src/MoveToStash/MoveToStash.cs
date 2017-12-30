@@ -361,8 +361,10 @@ namespace MoveToStash
 
                 if (string.IsNullOrEmpty(item?.Path))
                     continue;
+                var modsComponent = item?.GetComponent<Mods>();
                 if (item.Path.Contains("Currency")
-                    || item.Path.Contains("Jewels"))
+                    || item.Path.Contains("Jewels")
+                    || (modsComponent != null && item.Path.Contains("Maps") && modsComponent.ItemRarity > ItemRarity.Magic))
                     continue;
                 if (!CheckIngoredCell(position))
                     continue;
