@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Windows.Forms;
 using Newtonsoft.Json;
 using PoeHUD.Framework;
 using PoeHUD.Hud;
@@ -42,7 +43,7 @@ namespace MoveToStash
         private RectangleF _rectMoveButton;
         private RectangleF _rectChaosButton;
         private RectangleF _inventoryZone;
-        private MouseEventID? _mouseEventId;
+        private MouseButtons? _mouseButton;
 
         public override void Initialise()
         {
@@ -68,7 +69,39 @@ namespace MoveToStash
             _filterItems = JsonConvert.DeserializeObject<List<FilterItem>>(json);
 
             UGraphics = Graphics;
-            MenuPlugin.eMouseEvent += OnMouseEvent;
+            MenuPlugin.KeyboardMouseEvents.MouseDownExt += KeyboardMouseEvents_MouseDownExt;
+            MenuPlugin.KeyboardMouseEvents.MouseUpExt += KeyboardMouseEvents_MouseUpExt;
+            MenuPlugin.KeyboardMouseEvents.MouseMoveExt += KeyboardMouseEvents_MouseMove;
+        }
+
+        private void KeyboardMouseEvents_MouseDownExt(object sender, MouseEventArgs e)
+        {
+            if (!Settings.Enable || !GameController.Window.IsForeground())
+                return;
+
+            if (e.Button == MouseButtons.Left)
+            {
+                MousePosition = GameController.Window.ScreenToClient(e.X, e.Y);
+                _mouseButton = e.Button;
+            }
+        }
+
+        private void KeyboardMouseEvents_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (!Settings.Enable || !GameController.Window.IsForeground())
+                return;
+            MousePosition = GameController.Window.ScreenToClient(e.X, e.Y);
+        }
+
+        private void KeyboardMouseEvents_MouseUpExt(object sender, MouseEventArgs e)
+        {
+            if (!Settings.Enable || !GameController.Window.IsForeground())
+                return;
+
+            if (e.Button == MouseButtons.Left)
+            {
+                _mouseButton = null;
+            }
         }
 
         public override void Render()
@@ -135,9 +168,9 @@ namespace MoveToStash
                         #region MoveButton
 
                         Utils.DrawButton(_rectMoveButton, 1, new Color(55, 21, 0), Color.DarkGoldenrod);
-                        if (_rectMoveButton.Contains(MousePosition) && _mouseEventId == MouseEventID.LeftButtonUp)
+                        if (_rectMoveButton.Contains(MousePosition) && _mouseButton == MouseButtons.Left)
                         {
-                            _mouseEventId = null;
+                            _mouseButton = null;
                             if (_moveThread == null || !_moveThread.IsAlive)
                             {
                                 _moveThread = _ingameState.IngameUi.OpenLeftPanel.IsVisible
@@ -153,6 +186,7 @@ namespace MoveToStash
                                 Thread.Sleep(200);
                             }
                         }
+
                         if (_moveThread == null || !_moveThread.IsAlive)
                         {
                             if (_ingameState.IngameUi.InventoryPanel.IsVisible
@@ -184,9 +218,9 @@ namespace MoveToStash
                             _rectChaosButton = _rectMoveButton;
                             _rectChaosButton.Y = _rectMoveButton.Y - (_rectMoveButton.Height + 10);
                             Utils.DrawButton(_rectChaosButton, 1, new Color(55, 21, 0), Color.DarkGoldenrod);
-                            if (_rectChaosButton.Contains(MousePosition) && _mouseEventId == MouseEventID.LeftButtonUp)
+                            if (_rectChaosButton.Contains(MousePosition) && _mouseButton == MouseButtons.Left)
                             {
-                                _mouseEventId = null;
+                                _mouseButton = null;
                                 if (_moveThread == null || !_moveThread.IsAlive)
                                 {
                                     _moveThread = new Thread(ChaosRecipe);
@@ -200,6 +234,7 @@ namespace MoveToStash
                                     Thread.Sleep(200);
                                 }
                             }
+
                             if (_moveThread == null || !_moveThread.IsAlive)
                             {
                                 if (_ingameState.IngameUi.InventoryPanel.IsVisible
@@ -226,17 +261,6 @@ namespace MoveToStash
             }
         }
 
-        private void OnMouseEvent(MouseEventID id, SharpDX.Vector2 position)
-        {
-            _mouseEventId = null;
-            if (!Settings.Enable)
-                return;
-            MousePosition = position;
-            if (id != MouseEventID.LeftButtonUp)
-                return;
-            _mouseEventId = id;
-        }
-
         private void ScanInventory()
         {
             if (!_ingameState.IngameUi.InventoryPanel.IsVisible)
@@ -244,6 +268,7 @@ namespace MoveToStash
                 _run = false;
                 return;
             }
+
             LogMessage("MoveToStash start!", 3);
             Thread.Sleep(Settings.Speed * 3);
             _run = true;
@@ -265,6 +290,7 @@ namespace MoveToStash
                     BackToTab(currentTab, Settings.BackTo);
                     return;
                 }
+
                 foreach (var child in items)
                 {
                     if (!_run)
@@ -291,11 +317,13 @@ namespace MoveToStash
                     position.Y += GameController.Window.GetWindowRectangle().Y;
                     MouseClickCtrl(position.Center);
                 }
+
                 currentTab++;
                 if (currentTab > _ingameState.ServerData.StashPanel.TotalStashes)
                     return;
                 NextTab(currentTab);
             }
+
             BackToTab(currentTab, Settings.BackTo);
             LogMessage("MoveToStash Stop!", 3);
             _run = false;
@@ -342,6 +370,7 @@ namespace MoveToStash
                 _run = false;
                 return;
             }
+
             LogMessage("Sell Items start!", 3);
             _run = true;
             Thread.Sleep(Settings.Speed * 3);
@@ -373,6 +402,7 @@ namespace MoveToStash
                 position.Y += GameController.Window.GetWindowRectangle().Y;
                 MouseClickCtrl(position.Center);
             }
+
             LogMessage("Sell Items Stop!", 3);
         }
 
@@ -383,6 +413,7 @@ namespace MoveToStash
                 _run = false;
                 return;
             }
+
             LogMessage("Chaos Recipe start!", 3);
             Thread.Sleep(Settings.Speed * 3);
             _run = true;
@@ -417,11 +448,13 @@ namespace MoveToStash
                             }
                         }
                     }
+
                 currentTab++;
                 if (currentTab > _ingameState.ServerData.StashPanel.TotalStashes)
                     return;
                 NextTab(currentTab);
             }
+
             BackToTab(currentTab, Settings.BackTo);
             _run = false;
             LogMessage("MoveToStash Stop!", 3);
@@ -452,12 +485,14 @@ namespace MoveToStash
                             return true;
                         }
                     }
+
                     if (_onlyChaosSet)
                     {
                         var f = FindItem(items, type, count, 70);
                         if (f)
                             return true;
                     }
+
                     return FindItem(items, type, count, 100);
                 }
             }
@@ -467,6 +502,7 @@ namespace MoveToStash
                 Log(e.Source);
                 throw;
             }
+
             LogMessage($">>> Not found item: {type} in current tab", 5);
             return false;
         }
@@ -499,6 +535,7 @@ namespace MoveToStash
                         return true;
                 }
             }
+
             return false;
         }
 
@@ -549,6 +586,7 @@ namespace MoveToStash
                 MouseTools.MouseLeftClickEvent();
                 Thread.Sleep(Settings.Speed);
             }
+
             Thread.Sleep(Settings.Speed);
             KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyEventShiftVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyUp);
         }
@@ -612,6 +650,7 @@ namespace MoveToStash
                 inv = _ingameState.ServerData.StashPanel.GetStashInventoryByIndex(stashNum - 1);
             }
             while (inv == null && _run && delay > 0);
+
             _stash = inv;
         }
 
@@ -648,6 +687,7 @@ namespace MoveToStash
                 MouseClickCtrl(position.Center);
                 return true;
             }
+
             return false;
         }
 
