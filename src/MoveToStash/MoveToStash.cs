@@ -81,16 +81,15 @@ namespace MoveToStash
 
             if (e.Button == MouseButtons.Left)
             {
-                MousePosition = GameController.Window.ScreenToClient(e.X, e.Y);
-                _mouseButton = e.Button;
+                _mouseButton = null;
             }
         }
 
         private void KeyboardMouseEvents_MouseMove(object sender, MouseEventArgs e)
         {
-            if (!Settings.Enable || !GameController.Window.IsForeground())
-                return;
-            MousePosition = GameController.Window.ScreenToClient(e.X, e.Y);
+            //if (!Settings.Enable || !GameController.Window.IsForeground())
+            //    return;
+            //MousePosition = GameController.Window.ScreenToClient(e.X, e.Y);
         }
 
         private void KeyboardMouseEvents_MouseUpExt(object sender, MouseEventArgs e)
@@ -100,7 +99,8 @@ namespace MoveToStash
 
             if (e.Button == MouseButtons.Left)
             {
-                _mouseButton = null;
+                MousePosition = GameController.Window.ScreenToClient(e.X, e.Y);
+                _mouseButton = e.Button;
             }
         }
 
