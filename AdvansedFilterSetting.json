@@ -2,7 +2,7 @@
     {
         "Type": "Belt3",
         "ItemRarity": 0,
-        "Tab": 4,
+        "Tab": 6,
         "Comment": "Chance a Headhunter"
     },
 	{
@@ -34,5 +34,23 @@
         "ItemRarity": 0,
         "Tab": 3,
         "Comment": "Splinter of Chayula"
+    },
+	{
+        "Type": "CurrencyDelveCrafting",
+        "ItemRarity": 0,
+        "Tab": 14,
+        "Comment": ""
+    },
+	{
+        "Type": "DelveSocketableCurrency",
+        "ItemRarity": 0,
+        "Tab": 14,
+        "Comment": ""
+    },
+	{
+        "Type": "Scarabs",
+        "ItemRarity": 0,
+        "Tab": 3,
+        "Comment": ""
     },
 ]

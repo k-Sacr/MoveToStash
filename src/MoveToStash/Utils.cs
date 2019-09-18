@@ -16,7 +16,7 @@ namespace MoveToStash
         private static void DrawFrameBox(RectangleF rect, float borderWidth, Color boxColor, Color frameColor)
         {
             MoveToStash.UGraphics.DrawBox(rect, boxColor);
-            MoveToStash.UGraphics.DrawFrame(rect, borderWidth, frameColor);
+            MoveToStash.UGraphics.DrawFrame(rect, frameColor, (int) borderWidth);// (rect, borderWidth, frameColor);
             MoveToStash.UGraphics.DrawImage("menu-background.png", rect, boxColor);
         }
 
@@ -36,6 +36,7 @@ namespace MoveToStash
         public static Dictionary<int, HashSet<string>> ReadTabSetting(MoveToStashSetting settings)
         {
             var dict = new Dictionary<int, HashSet<string>>();
+            
             dict.AddToDic(settings.Amulets.Value, nameof(settings.Amulets));
             dict.AddToDic(settings.Belts.Value, nameof(settings.Belts));
             dict.AddToDic(settings.BodyArmours.Value, nameof(settings.BodyArmours));
@@ -56,6 +57,7 @@ namespace MoveToStash
             dict.AddToDic(settings.Maps.Value, nameof(settings.Maps));
             dict.AddToDic(settings.Leaguestones.Value, nameof(settings.Leaguestones));
             dict.AddToDic(settings.Essence.Value, nameof(settings.Essence));
+            dict.AddToDic(settings.ItemWithVeiled.Value, nameof(settings.ItemWithVeiled));
 
             return dict;
         }
