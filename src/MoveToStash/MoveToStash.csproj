@@ -36,10 +36,6 @@
       <HintPath>..\..\..\..\..\ExileCore.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Gma.System.MouseKeyHook">
-      <HintPath>..\..\..\..\Gma.System.MouseKeyHook.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="ImGui.NET">
       <HintPath>..\..\..\..\..\ImGui.NET.dll</HintPath>
       <Private>False</Private>
@@ -76,10 +72,6 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="System.Windows.Forms" />
-    <Reference Include="Trinet.Core.IO.Ntfs">
-      <HintPath>..\..\..\..\Trinet.Core.IO.Ntfs.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
