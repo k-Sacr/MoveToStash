@@ -439,6 +439,12 @@ namespace MoveToStash
                 return;
             }
 
+            if (!GameController.Game.IngameState.IngameUi.IsVisible)
+            {
+                _run = false;
+                return;
+            }
+
             LogMessage("Chaos Recipe start!", 3);
             Thread.Sleep(Settings.Speed * 3);
             _run = true;
@@ -503,7 +509,7 @@ namespace MoveToStash
                 {
                     if (type == "Weapons" && needTwoHand)
                     {
-                        var f = FindItem(items, type, 1, 100, "TwoHandWeapons");
+                        var f = FindItem(items, type, 1,detail: "TwoHandWeapons");
                         if (f)
                         {
                             needTwoHand = false;
@@ -513,12 +519,18 @@ namespace MoveToStash
 
                     if (_onlyChaosSet)
                     {
-                        var f = FindItem(items, type, count, 70);
+                        var f = FindItem(items, type, count,60, 74);
+                        if (f)
+                            return true;
+                    }
+                    if (_onlyChaosSet == false)
+                    {
+                        var f = FindItem(items, type, count, minLv: 75);
                         if (f)
                             return true;
                     }
 
-                    return FindItem(items, type, count, 100);
+                    return FindItem(items, type, count);
                 }
             }
             catch (Exception e)
@@ -532,7 +544,7 @@ namespace MoveToStash
             return false;
         }
 
-        private bool FindItem(IList<NormalInventoryItem> items, string type, int count, int maxLv, string detail = null)
+        private bool FindItem(IList<NormalInventoryItem> items, string type, int count, int minLv = 60, int maxLv = 100, string detail = null)
         {
             foreach (var child in items)
             {
@@ -550,14 +562,23 @@ namespace MoveToStash
                 var itemClass = CheckItem(item);
                 if (type == itemClass
                     && modsComponent.ItemRarity == ItemRarity.Rare
-                    && modsComponent.ItemLevel >= 60 && modsComponent.ItemLevel <= maxLv
+                    && modsComponent.ItemLevel >= minLv && modsComponent.ItemLevel <= maxLv
                     && (detail == null || item.Path.Contains(detail)))
                 {
                     MouseClickCtrl(position);
-                    if (modsComponent.ItemLevel < 70)
+                    if (modsComponent.ItemLevel <= 74)
+                    {
                         _onlyChaosSet = false;
+                    }
                     if (--count <= 0)
                         return true;
+
+                    if (_onlyChaosSet == false)
+                    {
+                        items.Remove(child);
+                        var f = FindItem(items, type, count, minLv: 75);
+                        return f || FindItem(items, type, count);
+                    }
                 }
             }
 
