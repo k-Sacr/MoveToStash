@@ -63,7 +63,7 @@ namespace MoveToStash
         }
     }
 
-    struct FilterItem
+    public struct FilterItem
     {
         public string Type;
         public int ItemRarity;

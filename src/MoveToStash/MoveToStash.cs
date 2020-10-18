@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
+using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using Newtonsoft.Json;
@@ -11,6 +13,8 @@ using ExileCore.PoEMemory.Components;
 using ExileCore.PoEMemory.Elements.InventoryElements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
+using ExileCore.Shared.Nodes;
+using ImGuiNET;
 using Graphics = ExileCore.Graphics;
 using RectangleF = SharpDX.RectangleF;
 
@@ -40,9 +44,120 @@ namespace MoveToStash
         private RectangleF _inventoryZone;
         private MouseButtons? _mouseEvent;
 
+        private string NewRuleText = "";
+        //private int NewRuleTab = 0;
+
+        //private RangeNode<int> NewRuleTabSetting = new RangeNode<int>(0, 0, 20);
         //private uint coroutineIteration = 0;
         //private Coroutine MoveToStashCoroutine;
         //private const string MoveToStashChecker = "MoveToStash";
+        
+        public override void DrawSettings()
+        {
+            
+
+            ImGuiTreeNodeFlags collapsingHeaderFlags = ImGuiTreeNodeFlags.CollapsingHeader;
+
+            if (ImGui.TreeNodeEx("Advanced Filter Setting", collapsingHeaderFlags))
+            {
+                NewRuleText = ImGuiExtension.InputText("Contain text", NewRuleText, 1024,
+                    ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.AutoSelectAll);
+                Settings.NewRuleRarity.Value = ImGuiExtension.IntSlider("rarity", Settings.NewRuleRarity);
+                Settings.NewRuleTab.Value = ImGuiExtension.IntSlider("move to tab", Settings.NewRuleTab);
+                //ImGui.Separator();
+                if (ImGui.Button("Create"))
+                {
+                    AddFilter();
+                }
+                ImGui.Separator();
+
+                //foreach (FilterItem i in _filterItems)
+                //{
+                //    ImGui.TextColored(new Vector4(1f, 0.3f, 0.6f, 0.8f), $"\"{i.Type}\"         Rarity:{i.ItemRarity}       Tab:{i.Tab}");
+                //    ImGui.SameLine();
+                //    if (ImGui.Button($"remove {i.ItemRarity}") )
+                //    {
+                //        LogMessage($"remove {i.Type}!", 3);
+                //        RemoveFilter(i);
+                //        break;
+                //    }
+                //}
+                var uniqId = 0;
+                for (var i = 0; i < _filterItems.Count; i++)
+                {
+                    var item = _filterItems[i];
+                    ImGui.TextColored(new Vector4(1f, 0.3f, 0.6f, 0.8f), $"\"{item.Type}\"         Rarity:{item.ItemRarity}       Tab:{item.Tab}");
+                    ImGui.SameLine();
+                    if (ImGui.Button($"Remove##{uniqId++}"))
+                    {
+                        LogMessage($"remove {item.Type}!", 3);
+                        RemoveFilter(i);
+                        i--;
+                    }
+                    
+                }
+                //ImGui.TreePop();
+            }
+
+
+            if (ImGui.TreeNodeEx("Plugin Options", collapsingHeaderFlags))
+            {
+                base.DrawSettings();
+
+                //ImGui.TreePop();
+            }
+
+            //ImGui.TreePop();
+
+            
+        }
+
+        public void ReadAdvancedFilterFile()
+        {
+            _filterItems.Add(new FilterItem { Type = "Belt3", ItemRarity = 0, Tab = 1, Comment = "Chance a Headhunter" });
+            var fileName = $"{DirectoryFullName}\\AdvancedFilterSetting.json";
+            if (!File.Exists(fileName))
+            {
+                var arr = JsonConvert.SerializeObject(_filterItems);
+                File.WriteAllText(fileName, arr);
+            }
+
+            string json = File.ReadAllText(fileName);
+            _filterItems = JsonConvert.DeserializeObject<List<FilterItem>>(json);
+
+        }
+
+        public void SaveAdvancedFilterFile()
+        {
+            var fileName = $"{DirectoryFullName}\\AdvancedFilterSetting.json";
+            if (File.Exists(fileName))
+            {
+                var arr = JsonConvert.SerializeObject(_filterItems, Formatting.Indented);
+                File.WriteAllText(fileName, arr);
+            }
+        }
+
+        public void AddFilter()
+        {
+            _filterItems.Add(new FilterItem
+            {
+                Type = NewRuleText, 
+                ItemRarity = Settings.NewRuleRarity, 
+                Tab = Settings.NewRuleTab, Comment = ""
+            });
+            Settings.NewRuleRarity.Value = 0;
+            Settings.NewRuleTab.Value = 0;
+            SaveAdvancedFilterFile();
+        }
+
+        public void RemoveFilter(int i)
+        {
+            _filterItems.RemoveAt(i);
+
+            SaveAdvancedFilterFile();
+        }
+
+
 
         public override bool Initialise()
         {
@@ -56,16 +171,7 @@ namespace MoveToStash
             string json = File.ReadAllText(fileName);
             _invArr = JsonConvert.DeserializeObject<int[,]>(json);
 
-            _filterItems.Add(new FilterItem { Type = "Belt3", ItemRarity = 0, Tab = 1, Comment = "Chance a Headhunter" });
-            fileName = $"{DirectoryFullName}\\AdvansedFilterSetting.json";
-            if (!File.Exists(fileName))
-            {
-                var arr = JsonConvert.SerializeObject(_filterItems);
-                File.WriteAllText(fileName, arr);
-            }
-
-            json = File.ReadAllText(fileName);
-            _filterItems = JsonConvert.DeserializeObject<List<FilterItem>>(json);
+            ReadAdvancedFilterFile();
 
             UGraphics = Graphics;
 
@@ -138,9 +244,20 @@ namespace MoveToStash
                     _holdKey = true;
                     if (_moveThread == null || !_moveThread.IsAlive)
                     {
-                        _moveThread = _ingameState.IngameUi.OpenLeftPanel.IsVisible
-                            ? new Thread(ScanInventory)
-                            : new Thread(SellItems);
+                        if (_ingameState.IngameUi.SellWindow.IsVisible)
+                        {
+                            _moveThread = new Thread(SellItems);
+                        }
+                        else if (_ingameState.IngameUi.StashElement.IsVisible)
+                        {
+                            _moveThread = new Thread(ScanInventory);
+                        }
+                        else
+                        {
+                            LogMessage("Stop!", 3);
+                            Thread.Sleep(200);
+                            return;
+                        }
                         _moveThread.Start();
                         Thread.Sleep(200);
                     }
@@ -711,7 +828,9 @@ namespace MoveToStash
                 delay -= delay / 5;
 //                inv = _ingameState.ServerData.StashPanel.GetStashInventoryByIndex(stashNum - 1);
                 //inv = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory];
-                inv = GameController.Game.IngameState.IngameUi.StashElement.VisibleStash;
+                inv = GameController.IngameState.IngameUi.StashElement.AllInventories[stashNum-1];
+
+                //inv = GameController.Game.IngameState.IngameUi.StashElement.GetStashInventoryByIndex(stashNum - 1);
             }
             while (inv == null && _run && delay > 0);
 

@@ -7,6 +7,13 @@ namespace MoveToStash
 {
     public class MoveToStashSetting : ISettings
     {
+
+        public MoveToStashSetting()
+        {
+            NewRuleTab  = new RangeNode<int>(0, 0, 20);
+            NewRuleRarity  = new RangeNode<int>(0, 0, 5);
+        }
+
         #region Setting
 
         [Menu("Tab num(start at left):", 10)]
@@ -106,5 +113,11 @@ namespace MoveToStash
         #endregion
 
         public ToggleNode Enable { get; set; } = new ToggleNode(false);
+
+        [Menu("", -1, 99)]
+        public RangeNode<int> NewRuleTab { get; set; }
+        
+        [Menu("", -1, 99)]
+        public RangeNode<int> NewRuleRarity { get; set; }
     }
 }
