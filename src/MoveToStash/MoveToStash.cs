@@ -2,22 +2,21 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
+using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using Newtonsoft.Json;
-using PoeHUD.Framework;
-using PoeHUD.Hud;
-using PoeHUD.Hud.Menu;
-using PoeHUD.Hud.UI;
-using PoeHUD.Models.Enums;
-using PoeHUD.Models.Interfaces;
-using PoeHUD.Plugins;
-using PoeHUD.Poe;
-using PoeHUD.Poe.Components;
-using PoeHUD.Poe.Elements;
-using PoeHUD.Poe.RemoteMemoryObjects;
-using SharpDX;
-using SharpDX.Direct3D9;
+using ExileCore;
+using ExileCore.PoEMemory;
+using ExileCore.PoEMemory.Components;
+using ExileCore.PoEMemory.Elements.InventoryElements;
+using ExileCore.PoEMemory.MemoryObjects;
+using ExileCore.Shared.Enums;
+using ExileCore.Shared.Nodes;
+using ImGuiNET;
+using Graphics = ExileCore.Graphics;
+using RectangleF = SharpDX.RectangleF;
 
 namespace MoveToStash
 {
@@ -43,11 +42,126 @@ namespace MoveToStash
         private RectangleF _rectMoveButton;
         private RectangleF _rectChaosButton;
         private RectangleF _inventoryZone;
-        private MouseButtons? _mouseButton;
+        private MouseButtons? _mouseEvent;
 
-        public override void Initialise()
+        private string NewRuleText = "";
+        //private int NewRuleTab = 0;
+
+        //private RangeNode<int> NewRuleTabSetting = new RangeNode<int>(0, 0, 20);
+        //private uint coroutineIteration = 0;
+        //private Coroutine MoveToStashCoroutine;
+        //private const string MoveToStashChecker = "MoveToStash";
+        
+        public override void DrawSettings()
         {
-            var fileName = PluginDirectory + @"/IgnoreCellSetting.json";
+            
+
+            ImGuiTreeNodeFlags collapsingHeaderFlags = ImGuiTreeNodeFlags.CollapsingHeader;
+
+            if (ImGui.TreeNodeEx("Advanced Filter Setting", collapsingHeaderFlags))
+            {
+                NewRuleText = ImGuiExtension.InputText("Contain text", NewRuleText, 1024,
+                    ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.AutoSelectAll);
+                Settings.NewRuleRarity.Value = ImGuiExtension.IntSlider("rarity", Settings.NewRuleRarity);
+                Settings.NewRuleTab.Value = ImGuiExtension.IntSlider("move to tab", Settings.NewRuleTab);
+                //ImGui.Separator();
+                if (ImGui.Button("Create"))
+                {
+                    AddFilter();
+                }
+                ImGui.Separator();
+
+                //foreach (FilterItem i in _filterItems)
+                //{
+                //    ImGui.TextColored(new Vector4(1f, 0.3f, 0.6f, 0.8f), $"\"{i.Type}\"         Rarity:{i.ItemRarity}       Tab:{i.Tab}");
+                //    ImGui.SameLine();
+                //    if (ImGui.Button($"remove {i.ItemRarity}") )
+                //    {
+                //        LogMessage($"remove {i.Type}!", 3);
+                //        RemoveFilter(i);
+                //        break;
+                //    }
+                //}
+                var uniqId = 0;
+                for (var i = 0; i < _filterItems.Count; i++)
+                {
+                    var item = _filterItems[i];
+                    ImGui.TextColored(new Vector4(1f, 0.3f, 0.6f, 0.8f), $"\"{item.Type}\"         Rarity:{item.ItemRarity}       Tab:{item.Tab}");
+                    ImGui.SameLine();
+                    if (ImGui.Button($"Remove##{uniqId++}"))
+                    {
+                        LogMessage($"remove {item.Type}!", 3);
+                        RemoveFilter(i);
+                        i--;
+                    }
+                    
+                }
+                //ImGui.TreePop();
+            }
+
+
+            if (ImGui.TreeNodeEx("Plugin Options", collapsingHeaderFlags))
+            {
+                base.DrawSettings();
+
+                //ImGui.TreePop();
+            }
+
+            //ImGui.TreePop();
+
+            
+        }
+
+        public void ReadAdvancedFilterFile()
+        {
+            _filterItems.Add(new FilterItem { Type = "Belt3", ItemRarity = 0, Tab = 1, Comment = "Chance a Headhunter" });
+            var fileName = $"{DirectoryFullName}\\AdvancedFilterSetting.json";
+            if (!File.Exists(fileName))
+            {
+                var arr = JsonConvert.SerializeObject(_filterItems);
+                File.WriteAllText(fileName, arr);
+            }
+
+            string json = File.ReadAllText(fileName);
+            _filterItems = JsonConvert.DeserializeObject<List<FilterItem>>(json);
+
+        }
+
+        public void SaveAdvancedFilterFile()
+        {
+            var fileName = $"{DirectoryFullName}\\AdvancedFilterSetting.json";
+            if (File.Exists(fileName))
+            {
+                var arr = JsonConvert.SerializeObject(_filterItems, Formatting.Indented);
+                File.WriteAllText(fileName, arr);
+            }
+        }
+
+        public void AddFilter()
+        {
+            _filterItems.Add(new FilterItem
+            {
+                Type = NewRuleText, 
+                ItemRarity = Settings.NewRuleRarity, 
+                Tab = Settings.NewRuleTab, Comment = ""
+            });
+            Settings.NewRuleRarity.Value = 0;
+            Settings.NewRuleTab.Value = 0;
+            SaveAdvancedFilterFile();
+        }
+
+        public void RemoveFilter(int i)
+        {
+            _filterItems.RemoveAt(i);
+
+            SaveAdvancedFilterFile();
+        }
+
+
+
+        public override bool Initialise()
+        {
+            var fileName = $"{DirectoryFullName}\\IgnoreCellSetting.json";
             if (!File.Exists(fileName))
             {
                 var arr = JsonConvert.SerializeObject(_invArr).Replace("],[", $"],{Environment.NewLine} [");
@@ -57,50 +171,60 @@ namespace MoveToStash
             string json = File.ReadAllText(fileName);
             _invArr = JsonConvert.DeserializeObject<int[,]>(json);
 
-            _filterItems.Add(new FilterItem { Type = "Belt3", ItemRarity = 0, Tab = 1, Comment = "Chance a Headhunter" });
-            fileName = PluginDirectory + @"/AdvansedFilterSetting.json";
-            if (!File.Exists(fileName))
-            {
-                var arr = JsonConvert.SerializeObject(_filterItems);
-                File.WriteAllText(fileName, arr);
-            }
-
-            json = File.ReadAllText(fileName);
-            _filterItems = JsonConvert.DeserializeObject<List<FilterItem>>(json);
+            ReadAdvancedFilterFile();
 
             UGraphics = Graphics;
-            MenuPlugin.KeyboardMouseEvents.MouseDownExt += KeyboardMouseEvents_MouseDownExt;
-            MenuPlugin.KeyboardMouseEvents.MouseUpExt += KeyboardMouseEvents_MouseUpExt;
-            MenuPlugin.KeyboardMouseEvents.MouseMoveExt += KeyboardMouseEvents_MouseMove;
+
+            Input.RegisterKey(Settings.MoveKey);
+            Settings.MoveKey.OnValueChanged += () => { Input.RegisterKey(Settings.MoveKey); };
+
+            Input.RegisterKey(Settings.ChaosKey);
+            Settings.ChaosKey.OnValueChanged += () => { Input.RegisterKey(Settings.ChaosKey); };
+
+            return true;
+
+            //InitCoroutine();
+            //SetupOrClose();
+            //MenuPlugin.KeyboardMouseEvents.MouseDownExt += KeyboardMouseEvents_MouseDownExt;
+            //MenuPlugin.KeyboardMouseEvents.MouseUpExt += KeyboardMouseEvents_MouseUpExt;
+            //MenuPlugin.KeyboardMouseEvents.MouseMoveExt += KeyboardMouseEvents_MouseMove;
         }
 
         private void KeyboardMouseEvents_MouseDownExt(object sender, MouseEventArgs e)
         {
-            if (!Settings.Enable || !GameController.Window.IsForeground())
+            if (!Settings.Enable)
                 return;
 
             if (e.Button == MouseButtons.Left)
             {
-                _mouseButton = null;
+                var position = GameController.Window.ScreenToClient(e.X, e.Y);
+                ;
+                var hitWindow = _rectChaosButton.Contains(position);
+                var hitWindow2 = _rectMoveButton.Contains(position);
+                if (hitWindow || hitWindow2)
+                {
+                    MousePosition = GameController.Window.ScreenToClient(e.X, e.Y);
+                    _mouseEvent = e.Button;
+                }
             }
         }
 
         private void KeyboardMouseEvents_MouseMove(object sender, MouseEventArgs e)
         {
-            //if (!Settings.Enable || !GameController.Window.IsForeground())
-            //    return;
-            //MousePosition = GameController.Window.ScreenToClient(e.X, e.Y);
+            if (!Settings.Enable)
+                return;
+            MousePosition = GameController.Window.ScreenToClient(e.X, e.Y);
+            ;
         }
 
         private void KeyboardMouseEvents_MouseUpExt(object sender, MouseEventArgs e)
         {
-            if (!Settings.Enable || !GameController.Window.IsForeground())
+            if (!Settings.Enable)
                 return;
 
             if (e.Button == MouseButtons.Left)
             {
-                MousePosition = GameController.Window.ScreenToClient(e.X, e.Y);
-                _mouseButton = e.Button;
+                _mouseEvent = null;
             }
         }
 
@@ -114,15 +238,26 @@ namespace MoveToStash
                     return;
 
                 _inventory = _ingameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory];
-                _inventoryZone = _inventory.InventoryUiElement.GetClientRect();
-                if (!_holdKey && WinApi.IsKeyDown(Settings.MoveKey.Value))
+                _inventoryZone = _inventory.GetClientRect();
+                if (!_holdKey && Input.IsKeyDown(((int) Settings.MoveKey.Value)) == true)
                 {
                     _holdKey = true;
                     if (_moveThread == null || !_moveThread.IsAlive)
                     {
-                        _moveThread = _ingameState.IngameUi.OpenLeftPanel.IsVisible
-                            ? new Thread(ScanInventory)
-                            : new Thread(SellItems);
+                        if (_ingameState.IngameUi.SellWindow.IsVisible)
+                        {
+                            _moveThread = new Thread(SellItems);
+                        }
+                        else if (_ingameState.IngameUi.StashElement.IsVisible)
+                        {
+                            _moveThread = new Thread(ScanInventory);
+                        }
+                        else
+                        {
+                            LogMessage("Stop!", 3);
+                            Thread.Sleep(200);
+                            return;
+                        }
                         _moveThread.Start();
                         Thread.Sleep(200);
                     }
@@ -133,10 +268,10 @@ namespace MoveToStash
                         Thread.Sleep(200);
                     }
                 }
-                else if (_holdKey && !WinApi.IsKeyDown(Settings.MoveKey.Value))
+                else if (_holdKey && !Input.IsKeyDown((int) Settings.MoveKey.Value) == true)
                     _holdKey = false;
 
-                if (!_holdKey && WinApi.IsKeyDown(Settings.ChaosKey.Value))
+                if (!_holdKey && Input.IsKeyDown((int) Settings.ChaosKey.Value))
                 {
                     _holdKey = true;
                     if (_moveThread == null || !_moveThread.IsAlive)
@@ -152,106 +287,115 @@ namespace MoveToStash
                         Thread.Sleep(200);
                     }
                 }
-                else if (_holdKey && !WinApi.IsKeyDown(Settings.ChaosKey.Value))
+                else if (_holdKey && !Input.IsKeyDown((int) Settings.ChaosKey.Value))
                     _holdKey = false;
 
-                if (Settings.ShowButtons.Value)
-                {
-                    var invPoint = _inventoryZone;
-                    float wCell = invPoint.Width / 12 * 2;
-                    float hCell = invPoint.Height / 5;
-                    _rectMoveButton = new RectangleF(_inventoryZone.X, _inventoryZone.Y - hCell, wCell, hCell * 0.7f);
-                    var invItem = _ingameState.UIHover.AsObject<NormalInventoryItem>();
-                    if (_ingameState.IngameUi.InventoryPanel.IsVisible
-                        && (invItem.Item == null || !invItem.Item.IsValid) || _run)
-                    {
-                        #region MoveButton
-
-                        Utils.DrawButton(_rectMoveButton, 1, new Color(55, 21, 0), Color.DarkGoldenrod);
-                        if (_rectMoveButton.Contains(MousePosition) && _mouseButton == MouseButtons.Left)
-                        {
-                            _mouseButton = null;
-                            if (_moveThread == null || !_moveThread.IsAlive)
-                            {
-                                _moveThread = _ingameState.IngameUi.OpenLeftPanel.IsVisible
-                                    ? new Thread(ScanInventory)
-                                    : new Thread(SellItems);
-                                _moveThread.Start();
-                                Thread.Sleep(65);
-                            }
-                            else if (_run && _moveThread != null && _moveThread.IsAlive)
-                            {
-                                _run = false;
-                                LogMessage("Stop!", 3);
-                                Thread.Sleep(200);
-                            }
-                        }
-
-                        if (_moveThread == null || !_moveThread.IsAlive)
-                        {
-                            if (_ingameState.IngameUi.InventoryPanel.IsVisible
-                                && !_ingameState.IngameUi.OpenLeftPanel.IsVisible)
-                            {
-                                Graphics.DrawText("<-Sell", 18, _rectMoveButton.Center, Color.DarkGoldenrod,
-                                    FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
-                            }
-
-                            else if (_ingameState.IngameUi.InventoryPanel.IsVisible
-                                     && _ingameState.IngameUi.OpenLeftPanel.IsVisible)
-                            {
-                                Graphics.DrawText("<-Move", 18, _rectMoveButton.Center, Color.DarkGoldenrod,
-                                    FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
-                            }
-                        }
-                        else if (_run && _moveThread != null && _moveThread.IsAlive)
-                        {
-                            Graphics.DrawText("work...", 18, _rectMoveButton.Center,
-                                Color.DarkGoldenrod, FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
-                        }
-
-                        #endregion
-
-                        #region ChaosButton
-
-                        if (_ingameState.IngameUi.OpenLeftPanel.IsVisible)
-                        {
-                            _rectChaosButton = _rectMoveButton;
-                            _rectChaosButton.Y = _rectMoveButton.Y - (_rectMoveButton.Height + 10);
-                            Utils.DrawButton(_rectChaosButton, 1, new Color(55, 21, 0), Color.DarkGoldenrod);
-                            if (_rectChaosButton.Contains(MousePosition) && _mouseButton == MouseButtons.Left)
-                            {
-                                _mouseButton = null;
-                                if (_moveThread == null || !_moveThread.IsAlive)
-                                {
-                                    _moveThread = new Thread(ChaosRecipe);
-                                    _moveThread.Start();
-                                    Thread.Sleep(65);
-                                }
-                                else if (_run && _moveThread != null && _moveThread.IsAlive)
-                                {
-                                    _run = false;
-                                    LogMessage("Stop!", 3);
-                                    Thread.Sleep(200);
-                                }
-                            }
-
-                            if (_moveThread == null || !_moveThread.IsAlive)
-                            {
-                                if (_ingameState.IngameUi.InventoryPanel.IsVisible
-                                    && _ingameState.IngameUi.OpenLeftPanel.IsVisible)
-                                    Graphics.DrawText("Set->", 18, _rectChaosButton.Center, Color.DarkGoldenrod,
-                                        FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
-                            }
-                            else if (_run && _moveThread != null && _moveThread.IsAlive)
-                            {
-                                Graphics.DrawText("work...", 18, _rectChaosButton.Center, Color.DarkGoldenrod,
-                                    FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
-                            }
-                        }
-
-                        #endregion
-                    }
-                }
+//                if (Settings.ShowButtons.Value)
+//                {
+//                    var invPoint = _inventoryZone;
+//                    float wCell = invPoint.Width / 12 * 2;
+//                    float hCell = invPoint.Height / 5;
+//                    _rectMoveButton = new RectangleF(_inventoryZone.X, _inventoryZone.Y - hCell, wCell, hCell * 0.7f);
+//                    var invItem = _ingameState.UIHover.AsObject<NormalInventoryItem>();
+//                    if (_ingameState.IngameUi.InventoryPanel.IsVisible
+//                        && (invItem.Item == null || !invItem.Item.IsValid) || _run)
+//                    {
+//                        #region MoveButton
+//
+////                        Utils.DrawButton(_rectMoveButton, 1, new Color(55, 21, 0), Color.DarkGoldenrod);
+////                        if (_rectMoveButton.Contains(MousePosition) && _mouseEvent == MouseButtons.Left)
+////                        {
+////                            _mouseEvent = null;
+////                            if (_moveThread == null || !_moveThread.IsAlive)
+////                            {
+////                                _moveThread = _ingameState.IngameUi.OpenLeftPanel.IsVisible
+////                                    ? new Thread(ScanInventory)
+////                                    : new Thread(SellItems);
+////                                _moveThread.Start();
+////                                Thread.Sleep(65);
+////                            }
+////                            else if (_run && _moveThread != null && _moveThread.IsAlive)
+////                            {
+////                                _run = false;
+////                                LogMessage("Stop!", 3);
+////                                Thread.Sleep(200);
+////                            }
+////                        }
+////                        if (_moveThread == null || !_moveThread.IsAlive)
+////                        {
+////                            if (_ingameState.IngameUi.InventoryPanel.IsVisible
+////                                && !_ingameState.IngameUi.OpenLeftPanel.IsVisible)
+////                            {
+////                                //Graphics.DrawText("<-Sell", 18, _rectMoveButton.Center, Color.DarkGoldenrod,
+////                                //    FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
+////                                Graphics.DrawText("<-Sell", _rectMoveButton.Center, FontAlign.Center);
+////                            }
+////
+////                            else if (_ingameState.IngameUi.InventoryPanel.IsVisible
+////                                     && _ingameState.IngameUi.OpenLeftPanel.IsVisible)
+////                            {
+////                                //Graphics.DrawText("<-Move", 18, _rectMoveButton.Center, Color.DarkGoldenrod,
+////                                //    FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
+////                                Graphics.DrawText("<-Move", _rectMoveButton.Center, FontAlign.Center);
+////
+////                            }
+////                        }
+////                        else if (_run && _moveThread != null && _moveThread.IsAlive)
+////                        {
+////                            //Graphics.DrawText("work...", 18, _rectMoveButton.Center,
+////                            //    Color.DarkGoldenrod, FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
+////                            Graphics.DrawText("work...", _rectMoveButton.Center, FontAlign.Center);
+////
+////                        }
+//
+//                        #endregion
+//
+//                        #region ChaosButton
+//
+////                        if (_ingameState.IngameUi.OpenLeftPanel.IsVisible)
+////                        {
+////                            _rectChaosButton = _rectMoveButton;
+////                            _rectChaosButton.Y = _rectMoveButton.Y - (_rectMoveButton.Height + 10);
+////                            Utils.DrawButton(_rectChaosButton, 1, new Color(55, 21, 0), Color.DarkGoldenrod);
+////                            if (_rectChaosButton.Contains(MousePosition) && _mouseEvent == MouseButtons.Left)
+////                            {
+////                                _mouseEvent = null;
+////                                if (_moveThread == null || !_moveThread.IsAlive)
+////                                {
+////                                    _moveThread = new Thread(ChaosRecipe);
+////                                    _moveThread.Start();
+////                                    Thread.Sleep(65);
+////                                }
+////                                else if (_run && _moveThread != null && _moveThread.IsAlive)
+////                                {
+////                                    _run = false;
+////                                    LogMessage("Stop!", 3);
+////                                    Thread.Sleep(200);
+////                                }
+////                            }
+////                            if (_moveThread == null || !_moveThread.IsAlive)
+////                            {
+////                                if (_ingameState.IngameUi.InventoryPanel.IsVisible
+////                                    && _ingameState.IngameUi.OpenLeftPanel.IsVisible)
+////                                {
+////                                    //Graphics.DrawText("Set->", 18, _rectChaosButton.Center, Color.DarkGoldenrod,
+////                                    //    FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
+////                                    Graphics.DrawText("Set->", _rectChaosButton.Center, FontAlign.Center);
+////                                }
+////                                    
+////
+////                            }
+////                            else if (_run && _moveThread != null && _moveThread.IsAlive)
+////                            {
+////                                //Graphics.DrawText("work...", 18, _rectChaosButton.Center, Color.DarkGoldenrod,
+////                                //    FontDrawFlags.VerticalCenter | FontDrawFlags.Center);
+////                                Graphics.DrawText("work...", _rectChaosButton.Center, FontAlign.Center);
+////                            }
+////                        }
+//
+//                        #endregion
+//                    }
+//                }
             }
             catch (Exception e)
             {
@@ -278,7 +422,7 @@ namespace MoveToStash
                 Indentity();
             FirstTab();
 
-            if (!_run)
+            if (!_run || !_ingameState.IngameUi.InventoryPanel.IsVisible)
                 return;
 
             int currentTab = 1;
@@ -293,15 +437,17 @@ namespace MoveToStash
 
                 foreach (var child in items)
                 {
-                    if (!_run)
+                    if (!_run || !_ingameState.IngameUi.InventoryPanel.IsVisible)
                         return;
 
                     var item = child.AsObject<NormalInventoryItem>().Item;
                     var position = child.GetClientRect();
-
+                    if (!CheckIngoredCell(position))
+                        continue;
 
                     if (string.IsNullOrEmpty(item?.Path))
                         continue;
+
                     var itemClass = CheckItem(item);
 
                     if (CheckAdvansedFilter(currentTab, position, item))
@@ -310,16 +456,13 @@ namespace MoveToStash
                     if (!tabsValue.ContainsKey(currentTab) || !tabsValue[currentTab].Contains(itemClass))
                         continue;
 
-                    if (!CheckIngoredCell(position))
-                        continue;
-
                     position.X += GameController.Window.GetWindowRectangle().X;
                     position.Y += GameController.Window.GetWindowRectangle().Y;
                     MouseClickCtrl(position.Center);
                 }
 
                 currentTab++;
-                if (currentTab > _ingameState.ServerData.StashPanel.TotalStashes)
+                if (currentTab > GameController.Game.IngameState.IngameUi.StashElement.TotalStashes)
                     return;
                 NextTab(currentTab);
             }
@@ -341,8 +484,7 @@ namespace MoveToStash
                     Thread.Sleep(Settings.Speed);
                     KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyRightVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyUp);
                     Thread.Sleep(Settings.Speed);
-
-                    if (_ingameState.ServerData.StashPanel.GetStashInventoryByIndex(needTab - 1).AsObject<Element>().IsVisible)
+                    if (GameController.Game.IngameState.IngameUi.StashElement.IndexVisibleStash < needTab)
                         return;
                 }
                 while (_run);
@@ -356,7 +498,7 @@ namespace MoveToStash
                     KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyLeftVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyUp);
                     Thread.Sleep(Settings.Speed);
 
-                    if (_ingameState.ServerData.StashPanel.GetStashInventoryByIndex(needTab - 1).AsObject<Element>().IsVisible)
+                    if (GameController.Game.IngameState.IngameUi.StashElement.IndexVisibleStash < needTab)
                         return;
                 }
                 while (_run);
@@ -414,6 +556,12 @@ namespace MoveToStash
                 return;
             }
 
+            if (!GameController.Game.IngameState.IngameUi.IsVisible)
+            {
+                _run = false;
+                return;
+            }
+
             LogMessage("Chaos Recipe start!", 3);
             Thread.Sleep(Settings.Speed * 3);
             _run = true;
@@ -450,7 +598,7 @@ namespace MoveToStash
                     }
 
                 currentTab++;
-                if (currentTab > _ingameState.ServerData.StashPanel.TotalStashes)
+                if (currentTab > GameController.Game.IngameState.IngameUi.StashElement.TotalStashes)
                     return;
                 NextTab(currentTab);
             }
@@ -464,9 +612,9 @@ namespace MoveToStash
         {
             try
             {
-                var itemInInv = _inventory.VisibleInventoryItems.Select(element => element.AsObject<NormalInventoryItem>().Item);
+                var itemInInv = _inventory.VisibleInventoryItems.Select(element => element.AsObject<NormalInventoryItem>().Item).ToList();
                 count -=
-                    itemInInv.Where(t => t != null && t.Path.Contains(type))
+                    itemInInv.Where(t => t != null && t.Path?.Contains(type) == true)
                         .Select(entity => entity.GetComponent<Mods>())
                         .Count(mods => mods.ItemRarity == ItemRarity.Rare && mods.ItemLevel >= 60);
 
@@ -478,7 +626,7 @@ namespace MoveToStash
                 {
                     if (type == "Weapons" && needTwoHand)
                     {
-                        var f = FindItem(items, type, 1, 100, "TwoHandWeapons");
+                        var f = FindItem(items, type, 1,detail: "TwoHandWeapons");
                         if (f)
                         {
                             needTwoHand = false;
@@ -488,12 +636,18 @@ namespace MoveToStash
 
                     if (_onlyChaosSet)
                     {
-                        var f = FindItem(items, type, count, 70);
+                        var f = FindItem(items, type, count,60, 74);
+                        if (f)
+                            return true;
+                    }
+                    if (_onlyChaosSet == false)
+                    {
+                        var f = FindItem(items, type, count, minLv: 75);
                         if (f)
                             return true;
                     }
 
-                    return FindItem(items, type, count, 100);
+                    return FindItem(items, type, count);
                 }
             }
             catch (Exception e)
@@ -507,7 +661,7 @@ namespace MoveToStash
             return false;
         }
 
-        private bool FindItem(List<NormalInventoryItem> items, string type, int count, int maxLv, string detail = null)
+        private bool FindItem(IList<NormalInventoryItem> items, string type, int count, int minLv = 60, int maxLv = 100, string detail = null)
         {
             foreach (var child in items)
             {
@@ -525,14 +679,23 @@ namespace MoveToStash
                 var itemClass = CheckItem(item);
                 if (type == itemClass
                     && modsComponent.ItemRarity == ItemRarity.Rare
-                    && modsComponent.ItemLevel >= 60 && modsComponent.ItemLevel <= maxLv
+                    && modsComponent.ItemLevel >= minLv && modsComponent.ItemLevel <= maxLv
                     && (detail == null || item.Path.Contains(detail)))
                 {
                     MouseClickCtrl(position);
-                    if (modsComponent.ItemLevel < 70)
+                    if (modsComponent.ItemLevel <= 74)
+                    {
                         _onlyChaosSet = false;
+                    }
                     if (--count <= 0)
                         return true;
+
+                    if (_onlyChaosSet == false)
+                    {
+                        items.Remove(child);
+                        var f = FindItem(items, type, count, minLv: 75);
+                        return f || FindItem(items, type, count);
+                    }
                 }
             }
 
@@ -546,6 +709,8 @@ namespace MoveToStash
             float hCell = invPoint.Height / 5;
             int x = (int) ((1f + position.X - invPoint.X) / wCell);
             int y = (int) ((1f + position.Y - invPoint.Y) / hCell);
+            if (x < 0 || y < 0 || x > 13 || y > 6)
+                return false;
             return _invArr[y, x] == 0;
         }
 
@@ -572,7 +737,13 @@ namespace MoveToStash
                 }
 
                 var item = child.AsObject<NormalInventoryItem>().Item;
-                var st = item?.Path.Split('/');
+                if (string.IsNullOrEmpty(item?.Path))
+                {
+                    continue;
+                }
+
+                var st = item.Path?.Split('/');
+
                 var modsComponent = item?.GetComponent<Mods>();
                 if (modsComponent == null || modsComponent.ItemRarity != ItemRarity.Rare || modsComponent.Identified || string.IsNullOrEmpty(item.Path)
                     || st[2] == "Maps")
@@ -591,26 +762,34 @@ namespace MoveToStash
             KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyEventShiftVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyUp);
         }
 
-        private static string CheckItem(IEntity item)
+        private static string CheckItem(Entity item)
         {
-            var modsComponent = item?.GetComponent<Mods>();
-            if (modsComponent == null)
+            if (item == null)
                 return "";
-            if (modsComponent.ItemRarity == ItemRarity.Unique)
-                return "";
-            var st = item.Path.Split('/');
 
+            Mods modsComponent = item.GetComponent<Mods>();
+            var rarity = modsComponent?.ItemRarity ?? ItemRarity.Normal;
+
+            if (rarity == ItemRarity.Unique)
+                //if (modsComponent?.ItemRarity == null || modsComponent.ItemRarity == ItemRarity.Unique)
+                return "";
+            if (modsComponent?.ItemMods.Any(m => m.Name.Contains("Veiled")) == true)
+            {
+                return "ItemWithVeiled";
+            }
+
+            var st = item.Path.Split('/');
             if (st.Length < 3)
                 return "";
             if (st[2] == "Armours")
-                return (modsComponent.ItemRarity == ItemRarity.Rare && modsComponent.ItemLevel >= 60) ? st[3] : "";
+                return (modsComponent?.ItemRarity == ItemRarity.Rare && modsComponent.ItemLevel >= 60) ? st[3] : "";
             if (st[2] == "Weapons" && (st.Last() == "OneHandMace4" || st.Last() == "OneHandMace11" || st.Last() == "OneHandMace18"))
                 return "StoneHammer";
             if (st[2] == "Weapons")
-                return (modsComponent.ItemRarity == ItemRarity.Rare && modsComponent.ItemLevel >= 60) ? st[2] : "";
+                return (modsComponent?.ItemRarity == ItemRarity.Rare && modsComponent.ItemLevel >= 60) ? st[2] : "";
             if (st[2] == "Currency" && st.Last().Contains("Essence"))
                 return "Essence";
-            if ((st[2] == "Rings" || st[2] == "Amulets" || st[2] == "Belts") && modsComponent.ItemRarity == ItemRarity.Magic)
+            if ((st[2] == "Rings" || st[2] == "Amulets" || st[2] == "Belts") && modsComponent?.ItemRarity == ItemRarity.Magic)
                 return "";
             return st[2];
         }
@@ -647,7 +826,11 @@ namespace MoveToStash
             {
                 Thread.Sleep(delay);
                 delay -= delay / 5;
-                inv = _ingameState.ServerData.StashPanel.GetStashInventoryByIndex(stashNum - 1);
+//                inv = _ingameState.ServerData.StashPanel.GetStashInventoryByIndex(stashNum - 1);
+                //inv = GameController.Game.IngameState.IngameUi.InventoryPanel[InventoryIndex.PlayerInventory];
+                inv = GameController.IngameState.IngameUi.StashElement.AllInventories[stashNum-1];
+
+                //inv = GameController.Game.IngameState.IngameUi.StashElement.GetStashInventoryByIndex(stashNum - 1);
             }
             while (inv == null && _run && delay > 0);
 
@@ -656,20 +839,22 @@ namespace MoveToStash
 
         private void FirstTab()
         {
+            var tabs = Settings.TabCount * 2;
             do
             {
                 KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyLeftVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyDown);
                 Thread.Sleep(Settings.Speed);
                 KeyTools.KeyEvent(WinApiMouse.KeyEventFlags.KeyLeftVirtual, WinApiMouse.KeyEventFlags.KeyEventKeyUp);
                 Thread.Sleep(Settings.Speed);
-
-                if (_ingameState.ServerData.StashPanel.GetStashInventoryByIndex(0).AsObject<Element>().IsVisible)
+                tabs--;
+                if (GameController.Game.IngameState.IngameUi.StashElement.IndexVisibleStash < 1
+                    || tabs <= 0)
                     return;
             }
-            while (_run);
+            while (_run || tabs > 0);
         }
 
-        private bool CheckAdvansedFilter(int currentTab, RectangleF position, IEntity itemClass)
+        private bool CheckAdvansedFilter(int currentTab, RectangleF position, Entity itemClass)
         {
             foreach (var item in _filterItems)
             {

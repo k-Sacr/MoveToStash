@@ -1,0 +1,50 @@
+[
+  {
+    "Type": "Belt3",
+    "ItemRarity": 0,
+    "Tab": 6,
+    "Comment": "Chance a Headhunter"
+  },
+  {
+    "Type": "CurrencyBreach",
+    "ItemRarity": 0,
+    "Tab": 3,
+    "Comment": ""
+  },
+  {
+    "Type": "CurrencyDelveCrafting",
+    "ItemRarity": 0,
+    "Tab": 14,
+    "Comment": ""
+  },
+  {
+    "Type": "DelveSocketableCurrency",
+    "ItemRarity": 0,
+    "Tab": 14,
+    "Comment": ""
+  },
+  {
+    "Type": "Scarabs",
+    "ItemRarity": 0,
+    "Tab": 3,
+    "Comment": ""
+  },
+  {
+    "Type": "CurrencyLegion",
+    "ItemRarity": 0,
+    "Tab": 3,
+    "Comment": ""
+  },
+  {
+    "Type": "Metamorphosis",
+    "ItemRarity": 3,
+    "Tab": 7,
+    "Comment": ""
+  },
+  {
+    "Type": "Heist",
+    "ItemRarity": 4,
+    "Tab": 14,
+    "Comment": ""
+  }
+]
